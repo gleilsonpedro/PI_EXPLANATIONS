@@ -1,11 +1,13 @@
-# explanations/pi_explanation.py
-
 import numpy as np
 import pandas as pd
 
 def one_explanation(Vs, delta, R, feature_names, modelo, instancia_test, X):
     """
     Calcula uma PI-explicação para uma instância específica.
+    * exixtem dois modos de aumentar ou diminuir a sensibilidade para refinar a escolha das features relevantes:
+        aumentando ou dmnuindo o percentil e multiplicando o valor do delta por uma constante 
+            se > 1 a sensibilidade aumenta ( mais features serão incluidas)
+            se 1 > a sensibilidade diminui ( menos features serão incluidas)
     """
     limiar_delta = np.percentile(np.abs(delta), 25)  # Pega o percentil 25 dos deltas
     Xpl = []
@@ -22,7 +24,8 @@ def one_explanation(Vs, delta, R, feature_names, modelo, instancia_test, X):
            break
 
         Xpl.append(f"{feature} - {feature_value}")
-        R_atual -= delta_value
+       # R_atual -= delta_value * 0.5 # Diminuir a sensibilidade
+        R_atual -= delta_value * 1.5 # Aumentar a sensibilidade
         Idx += 1
     
     return Xpl

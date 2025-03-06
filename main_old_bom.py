@@ -1,13 +1,15 @@
 from data.load_datasets import carregar_dataset
 from models.train_model import treinar_modelo
 from explanations.pi_explanation import analisar_instancias, contar_features_relevantes
-from gridsearch_pi_explanation import busca_melhores_parametros
 import time
 import os
 
 # 🔹 Função para limpar o terminal
 def limpar_terminal():
-    os.system('cls' if os.name == 'nt' else 'clear')
+    if os.name == 'nt':  # Windows
+        os.system('cls')
+    else:  # Linux/Mac
+        os.system('clear')
 
 # 🔹 Menu de seleção de datasets
 menu = '''
@@ -22,11 +24,11 @@ menu = '''
 '''
 
 # 🔹 Exibe o menu e solicita uma escolha
-while True:
-    limpar_terminal()
-    print(menu)
-    opcao = input("Digite o número do dataset ou 'Q' para sair: ").strip().upper()
+print(menu)
+opcao = input("Digite o número do dataset ou 'Q' para sair: ").upper().strip()
 
+# 🔹 Processa a opção selecionada
+while True:
     if opcao == 'Q':
         print("Você escolheu sair.")
         break
@@ -39,14 +41,15 @@ while True:
         
         # 🔹 Limpa o terminal após a escolha do dataset
         limpar_terminal()
+        
         print(f"**Dataset '{nome_dataset}' escolhido.**\n")
-
         try:
             # 🔹 Carrega o dataset
             X, y, class_names = carregar_dataset(nome_dataset)
-            print(f"Dataset '{nome_dataset}' carregado com sucesso!")
+            print(f"Dataset {nome_dataset} carregado com sucesso!")
             print(f"Classes disponíveis: {class_names}")
-            print(f"Total de amostras: {X.shape[0]} | Número de atributos: {X.shape[1]}\n")
+            print(f"Total de amostras: {X.shape[0]}")
+            print(f"Número de atributos: {X.shape[1]}\n")
 
             # 🔹 Permitir que o usuário escolha qual classe será `0`
             print("**Escolha qual classe será a `0` (o restante será `1`)**:")
@@ -58,16 +61,10 @@ while True:
                     escolha_classe_0 = int(input("\nDigite o número da classe que será `0`: "))
                     if 0 <= escolha_classe_0 < len(class_names):
                         break
-                    print("Número inválido! Escolha um número da lista acima.")
+                    else:
+                        print("Número inválido! Escolha um número da lista acima.")
                 except ValueError:
                     print("Entrada inválida! Digite um número correspondente a uma classe.")
-
-             # Chama o grid search
-            busca_melhores_parametros(nome_dataset, escolha_classe_0)
-            break
-        except Exception as e:
-            print(f"❌ Erro ao processar o dataset: {e}")
-            input("Pressione Enter para voltar ao menu...")
 
             classe_0_nome = class_names[escolha_classe_0]
             outras_classes = [c for i, c in enumerate(class_names) if i != escolha_classe_0]
@@ -77,9 +74,7 @@ while True:
             print(f"    Classes `{outras_classes}` serão agrupadas na classe `1`\n")
 
             # Ajustar `y` para refletir a nova classe `0`
-            import numpy as np
-            y = np.array(y)
-            y_binario = np.where(y == escolha_classe_0, 0, 1)
+            y_binario = [0 if label == escolha_classe_0 else 1 for label in y]
 
             #  Medindo o tempo de treinamento do modelo
             inicio_treinamento = time.time()
@@ -97,19 +92,20 @@ while True:
             tempo_total = tempo_treinamento + tempo_pi
 
             #  Exibe os tempos de execução
-            print("\n🔹 **Tempos de Execução:**")
-            print(f"   - Treinamento do modelo:      {tempo_treinamento:.4f} segundos")
-            print(f"   - Cálculo das PI-explicações: {tempo_pi:.4f} segundos")
-            print(f"   - Tempo total:                {tempo_total:.4f} segundos\n")
+            print()
+            print(f"**Tempo de treinamento do modelo:**      {tempo_treinamento:.4f} segundos")
+            print(f"**Tempo de cálculo das PI-explicações:** {tempo_pi:.4f} segundos")
+            print(f"**Tempo total de execução:**             {tempo_total:.4f} segundos\n")
 
             #  Conta as features relevantes
-            print("🔹 **Contagem de features relevantes:**")
+            print("**Contagem de features relevantes:**")
             contar_features_relevantes(TUDO)
             break
-
         except Exception as e:
-            print(f"❌ Erro ao processar o dataset: {e}")
-            input("Pressione Enter para voltar ao menu...")
+            print(f"Erro ao processar o dataset: {e}")
     else:
-        print("❌ Opção inválida. Por favor, escolha um número do menu ou 'Q' para sair.")
-        input("Pressione Enter para tentar novamente...")
+        #  Limpa o terminal antes de exibir o menu novamente
+        limpar_terminal()
+        print(menu)
+        print("Opção inválida. Por favor, escolha um número do menu ou 'Q' para sair.")
+        opcao = input("Digite o número do dataset ou 'Q' para sair: ").upper().strip()
