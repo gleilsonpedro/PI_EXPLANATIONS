@@ -114,25 +114,6 @@ car_evaluation
 
 diabetes_binary
 
-Contribuindo
-
-Este projeto está em constante evolução, e contribuições são muito bem-vindas! Se você deseja adicionar novos datasets, aprimorar as técnicas de explicação, otimizar o código existente ou corrigir bugs, siga os passos abaixo:
-
-Faça um fork do repositório para a sua conta do GitHub.
-
-Crie uma branch para a sua feature ou correção de bug:
-
-git checkout -b feature/nome-da-feature
-
-Realize as modificações e adicione commits com mensagens descritivas:
-
-git commit -m 'Adicionando nova feature ou corrigindo bug'
-
-Envie as alterações para o seu repositório fork:
-
-git push origin feature/nome-da-feature
-Abra um pull request (PR) para o repositório original.
-
 Licença
 
 Este projeto é licenciado sob a licença MIT. Consulte o arquivo LICENSE para obter mais detalhes sobre os termos e condições de uso.
