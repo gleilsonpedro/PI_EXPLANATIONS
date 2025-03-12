@@ -4,30 +4,30 @@ from explanations.pi_explanation import analisar_instancias, contar_features_rel
 import time
 import os
 
-# 🔹 Função para limpar o terminal
+#  Função para limpar o terminal
 def limpar_terminal():
     if os.name == 'nt':  # Windows
         os.system('cls')
     else:  # Linux/Mac
         os.system('clear')
 
-# 🔹 Menu de seleção de datasets
+#  Menu de seleção de datasets
 menu = '''
-|  ************************* MENU ***************************  |
-|  0 - iris                     |  1 - wine                     |
-|  2 - breast_cancer            |  3 - digits                  |
+|  ************************* MENU *************************** |
+|  0 - iris                     |  1 - wine                   |
+|  2 - breast_cancer            |  3 - digits                 |
 |  4 - banknote_authentication  |  5 - wine_quality           |
 |  6 - heart_disease            |  7 - parkinsons             |
 |  8 - car_evaluation           |  9 - diabetes_binary        |
-|  Q - SAIR                                                |
+|  Q - SAIR                                                   |
 |-------------------------------------------------------------|
 '''
 
-# 🔹 Exibe o menu e solicita uma escolha
+#  Exibe o menu e solicita uma escolha
 print(menu)
 opcao = input("Digite o número do dataset ou 'Q' para sair: ").upper().strip()
 
-# 🔹 Processa a opção selecionada
+#  Processa a opção selecionada
 while True:
     if opcao == 'Q':
         print("Você escolheu sair.")
@@ -39,26 +39,20 @@ while True:
         ]
         nome_dataset = nomes_datasets[int(opcao)]
         
-        # 🔹 Limpa o terminal após a escolha do dataset
         limpar_terminal()
         
         print(f"**Dataset '{nome_dataset}' escolhido.**\n")
         try:
-            # 🔹 Carrega o dataset
+            #  Carrega o dataset
             X, y, class_names = carregar_dataset(nome_dataset)
             print(f"Dataset {nome_dataset} carregado com sucesso!")
             print(f"Classes disponíveis: {class_names}")
             print(f"Total de amostras: {X.shape[0]}")
             print(f"Número de atributos: {X.shape[1]}\n")
 
-            # 🔹 Permitir que o usuário escolha qual classe será `0`
-            print("**Escolha qual classe será a `0` (o restante será `1`)**:")
-            for i, class_name in enumerate(class_names):
-                print(f"   [{i}] - {class_name}")
-
             while True:
                 try:
-                    escolha_classe_0 = int(input("\nDigite o número da classe que será `0`: "))
+                    escolha_classe_0 = int(input("\nDigite o número para classe `0`: "))
                     if 0 <= escolha_classe_0 < len(class_names):
                         break
                     else:
@@ -69,7 +63,7 @@ while True:
             classe_0_nome = class_names[escolha_classe_0]
             outras_classes = [c for i, c in enumerate(class_names) if i != escolha_classe_0]
 
-            print(f"\n🔹 **Definição do problema binário:**")
+            print(f"\n **Definição do problema binário:**")
             print(f"    Classe `{classe_0_nome}` será a classe `0`")
             print(f"    Classes `{outras_classes}` serão agrupadas na classe `1`\n")
 

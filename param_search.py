@@ -14,19 +14,25 @@ def limpar_terminal():
 
 # 🔹 Menu de seleção de datasets
 menu = '''
-|  ************************* MENU ***************************  |
-|  0 - iris                     |  1 - wine                     |
-|  2 - breast_cancer            |  3 - digits                  |
+|  ************************* MENU *************************** |
+|  0 - iris                     |  1 - wine                   |
+|  2 - breast_cancer            |  3 - digits                 |
 |  4 - banknote_authentication  |  5 - wine_quality           |
 |  6 - heart_disease            |  7 - parkinsons             |
 |  8 - car_evaluation           |  9 - diabetes_binary        |
-|  Q - SAIR                                                |
+|  Q - SAIR                                                   |
 |-------------------------------------------------------------|
 '''
 
-def gerar_dados_simulados(dataset, classe_0, num_features, acuracia, alpha=0.5, max_features=10):
+def busca_hiperparametros(dataset, classe_0, num_features, acuracia, alpha=0.5, max_features=10):
     """
-    Gera dados simulados para análise, combinando número de features, erro e variações de percentil/delta_value.
+    busca os hiperparâmetros (percentil e delta_value) e calcula uma métrica combinada
+    para o dataset e à classe 0 escolhida
+    -> A métrica combinada é usada para rankear as melhores combinações de percentil e delta_value:
+        - O número de features (normalizado por max_features).
+        - O erro do modelo (1 - acurácia).
+        - O percentil (p / 100).
+        - O delta_value (delta_value / 10).
     """
     # Valores de percentil e delta_value para simulação
     percentis = [10, 25, 50, 75]
@@ -73,7 +79,7 @@ def calcular_ranking(resultados):
 
 def exibir_ranking(ranking, nome_dataset, classe_0_nome, acuracia, desvio_padrao=None):
     """
-    Exibe o ranking das 5 melhores combinações no terminal, com informações adicionais.
+    Exibe o ranking das 5 melhores combinações com informações adicionais.
     """
     print("\n🔹 **Informações Gerais:**")
     print(f"  - Acurácia: {acuracia:.4f}")
@@ -141,7 +147,7 @@ def main():
             acuracia = accuracy_score(y_test, y_pred)
             
             # Gera dados simulados para análise
-            resultados = gerar_dados_simulados(nome_dataset, classe_0_nome, num_features, acuracia)
+            resultados = busca_hiperparametros(nome_dataset, classe_0_nome, num_features, acuracia)
             
             # Calcula o ranking das 5 melhores combinações
             ranking = calcular_ranking(resultados)

@@ -105,12 +105,13 @@ def analisar_instancias(X_test, y_test, class_names, modelo, X, instancia_para_a
         # Computa a PI-explicação para a instância atual usando nomes das features
         Xpl = one_explanation(Vs, delta, R, feature_names, modelo, instancia_test, X)
         
-        # Imprime os resultados
+        # Imprime os resultados todos
         classe_verdadeira = y_test[idx]
         print(f"\nInstância {idx}:")
         print(f"Classe verdadeira (binária): {classe_verdadeira}")
         print(f"PI-Explicação: ")
-        
+
+              
         TUDO.append(Xpl)
 
         for item in Xpl:

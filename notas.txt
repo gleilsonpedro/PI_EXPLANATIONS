@@ -1,0 +1,4 @@
+-gerar contagem de features relevantes, somente para a classe 0
+-testar com outros datasets 
+- validar as explicacões para todos os datasets
+- inserir graficos - facilitar a interpretação da explicação
