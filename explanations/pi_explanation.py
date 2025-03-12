@@ -4,7 +4,7 @@ import pandas as pd
 def one_explanation(Vs, delta, R, feature_names, modelo, instancia_test, X):
     """
     Calcula uma PI-explicação para uma instância específica.
-    * exixtem dois modos de aumentar ou diminuir a sensibilidade para refinar a escolha das features relevantes:
+    * HIPERPARAMETROS:
         aumentando ou dmnuindo o percentil e multiplicando o valor do delta por uma constante 
             se > 1 a sensibilidade aumenta ( mais features serão incluidas)
             se 1 > a sensibilidade diminui ( menos features serão incluidas)
