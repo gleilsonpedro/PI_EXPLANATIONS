@@ -14,3 +14,5 @@ Sensibilidade = Verdadeiros Positivos (VP) / Verdadeiros Positivos (VP) + Falsos
 
 É especialmente importante em problemas onde os falsos negativos (casos positivos classificados erroneamente como negativos) são críticos. Por exemplo, em diagnósticos médicos, um falso negativo pode ser muito perigoso.
 
+- reduzir dimensdionalidade dos datasets grandes
+- criar código removendo as features desnecessárias segundo a pi-explicacões para teste.

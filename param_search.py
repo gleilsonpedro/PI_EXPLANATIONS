@@ -1,87 +1,11 @@
 import pandas as pd
 import numpy as np
-from sklearn.datasets import load_breast_cancer
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, recall_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.feature_selection import SelectPercentile, f_classif
-
-# Função para carregar o dataset
-def carregar_dataset(nome_dataset):
-    if nome_dataset == 'breast_cancer':
-        data = load_breast_cancer()
-        X = data.data
-        y = data.target
-        class_names = data.target_names
-        return X, y, class_names
-    else:
-        raise ValueError(f"Dataset '{nome_dataset}' não suportado.")
-
-# Função para selecionar dataset e classe
-def selecionar_dataset_e_classe():
-    """
-    Menu para selecionar o dataset e a classe que será a classe 0.
-    Retorna:
-        - nome_dataset: Nome do dataset escolhido.
-        - classe_0_nome: Nome da classe que será a classe 0.
-        - X: Features do dataset.
-        - y: Labels do dataset.
-        - class_names: Nomes das classes.
-    """
-    # Menu de seleção de datasets
-    menu = '''
-    |  ************************* MENU ***************************  |
-    |  0 - iris                     |  1 - wine                     |
-    |  2 - breast_cancer            |  3 - digits                  |
-    |  4 - banknote_authentication  |  5 - wine_quality           |
-    |  6 - heart_disease            |  7 - parkinsons             |
-    |  8 - car_evaluation           |  9 - diabetes_binary        |
-    |  Q - SAIR                                                |
-    |-------------------------------------------------------------|
-    '''
-    print(menu)
-
-    # Lista de datasets disponíveis
-    nomes_datasets = [
-        'iris', 'wine', 'breast_cancer', 'digits', 'banknote_authentication',
-        'wine_quality', 'heart_disease', 'parkinsons', 'car_evaluation', 'diabetes_binary'
-    ]
-
-    # Solicitar a escolha do dataset
-    while True:
-        opcao = input("Digite o número do dataset ou 'Q' para sair: ").upper().strip()
-        if opcao == 'Q':
-            print("Você escolheu sair.")
-            return None, None, None, None, None
-        elif opcao.isdigit() and 0 <= int(opcao) <= 9:
-            nome_dataset = nomes_datasets[int(opcao)]
-            break
-        else:
-            print("Opção inválida. Por favor, escolha um número do menu ou 'Q' para sair.")
-
-    # Carregar o dataset
-    X, y, class_names = carregar_dataset(nome_dataset)
-
-    # Exibir as classes disponíveis
-    print("\nClasses disponíveis:")
-    for i, class_name in enumerate(class_names):
-        print(f"   [{i}] - {class_name}")
-
-    # Solicitar a escolha da classe 0
-    while True:
-        escolha_classe_0 = input("\nDigite o número da classe que será `0`: ")
-        if escolha_classe_0.isdigit() and 0 <= int(escolha_classe_0) < len(class_names):
-            classe_0_nome = class_names[int(escolha_classe_0)]
-            break
-        else:
-            print("Número inválido! Escolha um número da lista acima.")
-
-    print(f"\n🔹 **Definição do problema binário:**")
-    print(f"    Classe `{classe_0_nome}` será a classe `0`")
-    print(f"    Classes `{[c for i, c in enumerate(class_names) if i != int(escolha_classe_0)]}` serão agrupadas na classe `1`\n")
-
-    return nome_dataset, classe_0_nome, X, y, class_names
+from data.load_datasets import carregar_dataset, selecionar_dataset_e_classe  # Importando do load_datasets.py
 
 # Função para selecionar features com base no percentil
 def selecionar_features_por_percentil(X, y, percentil):
@@ -95,9 +19,9 @@ def selecionar_features_por_percentil(X, y, percentil):
 # Função para calcular a sensibilidade
 def calcular_sensibilidade(y_true, y_pred):
     """
-    Calcula a sensibilidade (recall da classe positiva).
+    Calcula a sensibilidade (recall) para a classe positiva (classe 0) em um problema One-vs-Rest.
     """
-    return recall_score(y_true, y_pred, pos_label=1)
+    return recall_score(y_true, y_pred, pos_label=0)  # Calcula o recall para a classe 0
 
 # Função para calcular a métrica combinada
 def calcular_metrica_comb(num_features, erro, features_relevantes, sensibilidade, delta_value, percentil, alpha=0.5):
@@ -165,7 +89,7 @@ def param_search(X, y, alpha=0.5):
 
 # Exemplo de uso
 if __name__ == "__main__":
-    # Selecionar dataset e classe
+    # Selecionar dataset e classe usando a função do load_datasets.py
     nome_dataset, classe_0_nome, X, y, class_names = selecionar_dataset_e_classe()
     if nome_dataset is not None:
         # Executar a busca de hiperparâmetros
