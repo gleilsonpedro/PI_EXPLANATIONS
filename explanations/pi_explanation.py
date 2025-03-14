@@ -9,7 +9,7 @@ def one_explanation(Vs, delta, R, feature_names, modelo, instancia_test, X):
             se > 1 a sensibilidade aumenta ( mais features serão incluidas)
             se 1 > a sensibilidade diminui ( menos features serão incluidas)
     """
-    limiar_delta = np.percentile(np.abs(delta), 25)  # Pega o percentil 25 dos deltas
+    limiar_delta = np.percentile(np.abs(delta), 10)  # Pega o percentil 25 dos deltas
     Xpl = []
     delta_sorted = sorted(enumerate(delta), key=lambda x: abs(x[1]), reverse=True)
     R_atual = R

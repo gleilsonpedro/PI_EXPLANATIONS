@@ -2,3 +2,15 @@
 -testar com outros datasets 
 - validar as explicacões para todos os datasets
 - inserir graficos - facilitar a interpretação da explicação
+
+Acuracia= 
+Verdadeiros Positivos (VP)+Verdadeiros Negativos (VN) / Falsos Positivos (FP)+Falsos Negativos (FN) Verdadeiros Positivos(VP)+Verdadeiros Negativos (VN)
+​
+A sensibilidade (também chamada de recall) mede a proporção de exemplos positivos que foram corretamente identificados pelo modelo. É calculada como:
+
+Sensibilidade = Verdadeiros Positivos (VP) / Verdadeiros Positivos (VP) + Falsos Negativos (FN)
+
+​A sensibilidade indica o quão bem o modelo identifica a classe positiva.
+
+É especialmente importante em problemas onde os falsos negativos (casos positivos classificados erroneamente como negativos) são críticos. Por exemplo, em diagnósticos médicos, um falso negativo pode ser muito perigoso.
+

@@ -1,166 +1,174 @@
 import pandas as pd
 import numpy as np
-import os
-from data.load_datasets import carregar_dataset
-from models.train_model import treinar_modelo
-from explanations.pi_explanation import analisar_instancias
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, recall_score
+from sklearn.preprocessing import StandardScaler
+from sklearn.feature_selection import SelectPercentile, f_classif
 
-# 🔹 Função para limpar o terminal
-def limpar_terminal():
-    if os.name == 'nt':  # Windows
-        os.system('cls')
-    else:  # Linux/Mac
-        os.system('clear')
+# Função para carregar o dataset
+def carregar_dataset(nome_dataset):
+    if nome_dataset == 'breast_cancer':
+        data = load_breast_cancer()
+        X = data.data
+        y = data.target
+        class_names = data.target_names
+        return X, y, class_names
+    else:
+        raise ValueError(f"Dataset '{nome_dataset}' não suportado.")
 
-# 🔹 Menu de seleção de datasets
-menu = '''
-|  ************************* MENU *************************** |
-|  0 - iris                     |  1 - wine                   |
-|  2 - breast_cancer            |  3 - digits                 |
-|  4 - banknote_authentication  |  5 - wine_quality           |
-|  6 - heart_disease            |  7 - parkinsons             |
-|  8 - car_evaluation           |  9 - diabetes_binary        |
-|  Q - SAIR                                                   |
-|-------------------------------------------------------------|
-'''
-
-def busca_hiperparametros(dataset, classe_0, num_features, acuracia, alpha=0.5, max_features=10):
+# Função para selecionar dataset e classe
+def selecionar_dataset_e_classe():
     """
-    busca os hiperparâmetros (percentil e delta_value) e calcula uma métrica combinada
-    para o dataset e à classe 0 escolhida
-    -> A métrica combinada é usada para rankear as melhores combinações de percentil e delta_value:
-        - O número de features (normalizado por max_features).
-        - O erro do modelo (1 - acurácia).
-        - O percentil (p / 100).
-        - O delta_value (delta_value / 10).
+    Menu para selecionar o dataset e a classe que será a classe 0.
+    Retorna:
+        - nome_dataset: Nome do dataset escolhido.
+        - classe_0_nome: Nome da classe que será a classe 0.
+        - X: Features do dataset.
+        - y: Labels do dataset.
+        - class_names: Nomes das classes.
     """
-    # Valores de percentil e delta_value para simulação
+    # Menu de seleção de datasets
+    menu = '''
+    |  ************************* MENU ***************************  |
+    |  0 - iris                     |  1 - wine                     |
+    |  2 - breast_cancer            |  3 - digits                  |
+    |  4 - banknote_authentication  |  5 - wine_quality           |
+    |  6 - heart_disease            |  7 - parkinsons             |
+    |  8 - car_evaluation           |  9 - diabetes_binary        |
+    |  Q - SAIR                                                |
+    |-------------------------------------------------------------|
+    '''
+    print(menu)
+
+    # Lista de datasets disponíveis
+    nomes_datasets = [
+        'iris', 'wine', 'breast_cancer', 'digits', 'banknote_authentication',
+        'wine_quality', 'heart_disease', 'parkinsons', 'car_evaluation', 'diabetes_binary'
+    ]
+
+    # Solicitar a escolha do dataset
+    while True:
+        opcao = input("Digite o número do dataset ou 'Q' para sair: ").upper().strip()
+        if opcao == 'Q':
+            print("Você escolheu sair.")
+            return None, None, None, None, None
+        elif opcao.isdigit() and 0 <= int(opcao) <= 9:
+            nome_dataset = nomes_datasets[int(opcao)]
+            break
+        else:
+            print("Opção inválida. Por favor, escolha um número do menu ou 'Q' para sair.")
+
+    # Carregar o dataset
+    X, y, class_names = carregar_dataset(nome_dataset)
+
+    # Exibir as classes disponíveis
+    print("\nClasses disponíveis:")
+    for i, class_name in enumerate(class_names):
+        print(f"   [{i}] - {class_name}")
+
+    # Solicitar a escolha da classe 0
+    while True:
+        escolha_classe_0 = input("\nDigite o número da classe que será `0`: ")
+        if escolha_classe_0.isdigit() and 0 <= int(escolha_classe_0) < len(class_names):
+            classe_0_nome = class_names[int(escolha_classe_0)]
+            break
+        else:
+            print("Número inválido! Escolha um número da lista acima.")
+
+    print(f"\n🔹 **Definição do problema binário:**")
+    print(f"    Classe `{classe_0_nome}` será a classe `0`")
+    print(f"    Classes `{[c for i, c in enumerate(class_names) if i != int(escolha_classe_0)]}` serão agrupadas na classe `1`\n")
+
+    return nome_dataset, classe_0_nome, X, y, class_names
+
+# Função para selecionar features com base no percentil
+def selecionar_features_por_percentil(X, y, percentil):
+    """
+    Seleciona as features mais importantes com base no percentil.
+    """
+    selector = SelectPercentile(f_classif, percentile=percentil)
+    X_selecionado = selector.fit_transform(X, y)
+    return X_selecionado, selector.get_support(indices=True)
+
+# Função para calcular a sensibilidade
+def calcular_sensibilidade(y_true, y_pred):
+    """
+    Calcula a sensibilidade (recall da classe positiva).
+    """
+    return recall_score(y_true, y_pred, pos_label=1)
+
+# Função para calcular a métrica combinada
+def calcular_metrica_comb(num_features, erro, features_relevantes, sensibilidade, delta_value, percentil, alpha=0.5):
+    """
+    Calcula a métrica combinada, penalizando muitas features relevantes e recompensando alta sensibilidade, delta value e percentil.
+    """
+    return (alpha * (features_relevantes / num_features)) + ((1 - alpha) * erro) + sensibilidade + (1 / delta_value) + (percentil / 100)
+
+# Função principal do param_search
+def param_search(X, y, alpha=0.5):
+    # Dividir em treino e teste
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+    # Padronizar as features
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
+
+    # Valores de percentil e delta value para testar
     percentis = [10, 25, 50, 75]
     valores_delta = [0.5, 1.0, 1.5]
-    
-    # Lista para armazenar os resultados simulados
+
     resultados = []
-    
-    # Calcula o erro (1 - acurácia)
-    erro = 1 - acuracia
-    
-    # Simula os resultados para cada combinação de percentil e delta_value
+
     for p in percentis:
         for delta_value in valores_delta:
-            # Calcula a métrica combinada
-            metrica = (alpha * (num_features / max_features)) + ((1 - alpha) * erro) + (p / 100) + (delta_value / 10)
-            
-            # Adiciona o resultado simulado à lista
+            # Selecionar features com base no percentil
+            X_train_selecionado, indices_features = selecionar_features_por_percentil(X_train, y_train, p)
+            X_test_selecionado = X_test[:, indices_features]
+
+            # Ajustar o parâmetro C com base no delta value
+            C = 1.0 / delta_value  # Quanto maior o delta value, menor o C (mais regularização)
+
+            # Treinar o modelo com as features selecionadas e o C ajustado
+            modelo = LogisticRegression(C=C, max_iter=1000, solver='liblinear')
+            modelo.fit(X_train_selecionado, y_train)
+
+            # Calcular a acurácia e o erro
+            y_pred = modelo.predict(X_test_selecionado)
+            acuracia = accuracy_score(y_test, y_pred)
+            erro = 1 - acuracia
+
+            # Calcular a quantidade de features relevantes e a sensibilidade
+            features_relevantes = X_train_selecionado.shape[1]
+            sensibilidade = calcular_sensibilidade(y_test, y_pred)
+
+            # Calcular a métrica combinada
+            metrica = calcular_metrica_comb(X.shape[1], erro, features_relevantes, sensibilidade, delta_value, p, alpha)
+
+            # Armazenar os resultados
             resultados.append({
-                "dataset": dataset,
-                "classe_0": classe_0,
                 "percentil": p,
                 "delta_value": delta_value,
+                "acuracia": acuracia,
+                "features_relevantes": features_relevantes,
+                "sensibilidade": sensibilidade,
                 "metrica": metrica
             })
     
-    return resultados
-
-def calcular_ranking(resultados):
-    """
-    Calcula o ranking das 5 melhores combinações de percentil e delta_value.
-    """
-    # Converte os resultados para um DataFrame
+    # Converter para DataFrame e ordenar pela métrica
     df = pd.DataFrame(resultados)
+    df_ordenado = df.sort_values(by="metrica", ascending=True)
     
-    # Agrupa por percentil e delta_value, calculando a média da métrica
-    df_agrupado = df.groupby(["percentil", "delta_value"])["metrica"].mean().reset_index()
-    
-    # Ordena pelo valor da métrica (menor é melhor)
-    df_agrupado = df_agrupado.sort_values(by="metrica", ascending=True)
-    
-    # Retorna as 5 melhores combinações
-    return df_agrupado.head(5)
+    return df_ordenado.head(5)
 
-def exibir_ranking(ranking, nome_dataset, classe_0_nome, acuracia, desvio_padrao=None):
-    """
-    Exibe o ranking das 5 melhores combinações com informações adicionais.
-    """
-    print("\n🔹 **Informações Gerais:**")
-    print(f"  - Acurácia: {acuracia:.4f}")
-    if desvio_padrao is not None:
-        print(f"  - Desvio Padrão: {desvio_padrao:.4f}")
-    print(f"  - Nome do Dataset: {nome_dataset}")
-    print(f"  - Feature 0 vs Outras Features: Classe `{classe_0_nome}` vs outras classes\n")
-
-    print("🔹 **Ranking das 5 Melhores Combinações:**")
-    print("| Percentil | Delta Value | Métrica Combinada |")
-    print("|-----------|-------------|-------------------|")
-    for _, row in ranking.iterrows():
-        print(f"| {row['percentil']:^9} | {row['delta_value']:^11} | {row['metrica']:^17.4f} |")
-
-def main():
-    # Exibe o menu e solicita uma escolha
-    limpar_terminal()
-    print(menu)
-    opcao = input("Digite o número do dataset ou 'Q' para sair: ").upper().strip()
-
-    if opcao == 'Q':
-        print("Você escolheu sair.")
-        return  # Encerra o programa
-
-    if opcao.isdigit() and 0 <= int(opcao) <= 9:
-        nomes_datasets = [
-            'iris', 'wine', 'breast_cancer', 'digits', 'banknote_authentication',
-            'wine_quality', 'heart_disease', 'parkinsons', 'car_evaluation', 'diabetes_binary'
-        ]
-        nome_dataset = nomes_datasets[int(opcao)]
-        
-        # Limpa o terminal após a escolha do dataset
-        limpar_terminal()
-        print(f"**Dataset '{nome_dataset}' escolhido.**\n")
-        
-        try:
-            # Carrega o dataset
-            X, y, class_names = carregar_dataset(nome_dataset)
-            num_features = X.shape[1]  # Número de features
-            
-            # Exibe as classes disponíveis
-            print("Classes disponíveis:")
-            for i, class_name in enumerate(class_names):
-                print(f"   [{i}] - {class_name}")
-            
-            # Solicita a escolha da classe 0
-            escolha_classe_0 = int(input("\nDigite o número da classe que será `0`: "))
-            if not 0 <= escolha_classe_0 < len(class_names):
-                print("Número inválido! Escolha um número da lista acima.")
-                return  # Encerra o programa em caso de erro
-
-            classe_0_nome = class_names[escolha_classe_0]
-            
-            print(f"\n🔹 **Definição do problema binário:**")
-            print(f"    Classe `{classe_0_nome}` será a classe `0`")
-            print(f"    Classes `{[c for i, c in enumerate(class_names) if i != escolha_classe_0]}` serão agrupadas na classe `1`\n")
-            
-            # Ajusta o y para o problema binário
-            y_binario = [0 if label == escolha_classe_0 else 1 for label in y]
-            
-            # Treina o modelo e calcula a acurácia
-            modelo, X_test, y_test = treinar_modelo(X, y_binario, classe_0=0)
-            y_pred = modelo.predict(X_test)
-            from sklearn.metrics import accuracy_score
-            acuracia = accuracy_score(y_test, y_pred)
-            
-            # Gera dados simulados para análise
-            resultados = busca_hiperparametros(nome_dataset, classe_0_nome, num_features, acuracia)
-            
-            # Calcula o ranking das 5 melhores combinações
-            ranking = calcular_ranking(resultados)
-            
-            # Exibe o ranking no terminal
-            exibir_ranking(ranking, nome_dataset, classe_0_nome, acuracia)
-            
-        except Exception as e:
-            print(f"Erro ao processar o dataset: {e}")
-            return  # Encerra o programa em caso de erro
-    else:
-        print("Opção inválida. Por favor, escolha um número do menu ou 'Q' para sair.")
-        return  # Encerra o programa em caso de erro
-
+# Exemplo de uso
 if __name__ == "__main__":
-    main()
+    # Selecionar dataset e classe
+    nome_dataset, classe_0_nome, X, y, class_names = selecionar_dataset_e_classe()
+    if nome_dataset is not None:
+        # Executar a busca de hiperparâmetros
+        ranking = param_search(X, y)
+        print("🔹 **Ranking das 5 Melhores Combinações:**")
+        print(ranking)
