@@ -1,4 +1,4 @@
-from data.load_datasets import selecionar_dataset_e_classe  # Importando a função do load_datasets.py
+from data.load_datasets import selecionar_dataset_e_classe  
 from models.train_model import treinar_modelo
 from explanations.pi_explanation import analisar_instancias, contar_features_relevantes
 import time
