@@ -16,3 +16,14 @@ Sensibilidade = Verdadeiros Positivos (VP) / Verdadeiros Positivos (VP) + Falsos
 
 - reduzir dimensdionalidade dos datasets grandes
 - criar código removendo as features desnecessárias segundo a pi-explicacões para teste.
+
+
+
+
+
+########## IDEIAS TEMAS
+
+Comparação da pi exp´licação com outras técnicas (SHAP e LIME)
+    Mostrar as vantagens das explicações em comparação com as outras
+    Comparar a complexidade das explicações
+    
