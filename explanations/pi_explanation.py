@@ -9,7 +9,7 @@ def one_explanation(Vs, delta, R, feature_names, modelo, instancia_test, X):
             se > 1 a sensibilidade aumenta ( mais features serão incluidas)
             se 1 > a sensibilidade diminui ( menos features serão incluidas)
     """
-    limiar_delta = np.percentile(np.abs(delta), 10)  # Pega o percentil 25 dos deltas
+   # limiar_delta = np.percentile(np.abs(delta), 10)  # Pega o percentil 25 dos deltas
     Xpl = []
     delta_sorted = sorted(enumerate(delta), key=lambda x: abs(x[1]), reverse=True)
     R_atual = R
@@ -19,13 +19,13 @@ def one_explanation(Vs, delta, R, feature_names, modelo, instancia_test, X):
         sorted_idx, delta_value = delta_sorted[Idx]
         feature = feature_names[sorted_idx]
         feature_value = Vs[feature]
-
-        if abs(delta_value) < limiar_delta:  # Descarta deltas muito pequenos
-           break
+##### verificar se esta ok
+       # if abs(delta_value) < limiar_delta:  # Descarta deltas muito pequenos
+       #    break
 
         Xpl.append(f"{feature} - {feature_value}")
        # R_atual -= delta_value * 0.5 # Diminuir a sensibilidade
-        R_atual -= delta_value * 1.5 # Aumentar a sensibilidade
+        R_atual -= delta_value #* 1.5 # Aumentar a sensibilidade
         Idx += 1
     
     return Xpl
@@ -91,6 +91,8 @@ def analisar_instancias(X_test, y_test, class_names, modelo, X, instancia_para_a
         gamma_A = modelo.decision_function(instancia_test)[0]
         
         # Cálculo do valor delta para cada feature
+
+        # verificar a classe antes de calcular os deltinhas classe 1 é esta classe 0 é invertido
         delta = []
         w = modelo.coef_[0]
         for i, feature in enumerate(feature_names):
