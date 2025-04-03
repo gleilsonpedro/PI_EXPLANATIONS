@@ -67,63 +67,60 @@ def encontrar_intervalo_perturbacao(modelo, instancia, feature, valor_original, 
     return min_val, max_val
 
 def analisar_instancias(X_test, y_test, class_names, modelo, X, instancia_para_analisar=None):
-    """
-    Analisa as instâncias do conjunto de teste e calcula as PI-explicações.
-    Retorna a lista de todas as PI-explicações (TUDO).
-    """
     if not isinstance(X_test, pd.DataFrame):
         X_test = pd.DataFrame(X_test, columns=[f"feature_{i}" for i in range(X_test.shape[1])])
 
-    # Obtém os nomes das features
-    feature_names = X_test.columns.tolist()  
-    
-    # Seleciona as instâncias para análise
-    num_instancias = len(X_test)
-    instancias_para_analisar = range(num_instancias) if instancia_para_analisar is None else [instancia_para_analisar]
-    
+    feature_names = X_test.columns.tolist()
     TUDO = []
-    # Loop para analisar cada instância selecionada
-    for idx in instancias_para_analisar:
+    
+    for idx in range(len(X_test)):
         Vs = X_test.iloc[idx].to_dict()
         instancia_test = X_test.iloc[[idx]]
-
-        # Calcula `gamma_A` usando `decision_function`
         gamma_A = modelo.decision_function(instancia_test)[0]
-        
-        # Cálculo do valor delta para cada feature
+        classe_verdadeira = y_test[idx]
 
-        # verificar a classe antes de calcular os deltinhas classe 1 é esta classe 0 é invertido
-       
+        # Cálculo ajustado dos deltas
         delta = []
         w = modelo.coef_[0]
+        
         for i, feature in enumerate(feature_names):
-            if w[i] < 0:
-                delta.append((Vs[feature] - X[feature].max()) * w[i])
-            else:
-                delta.append((Vs[feature] - X[feature].min()) * w[i])
+            if classe_verdadeira == 0:  # Classe positiva (virginica)
+                if w[i] < 0:
+                    delta_value = (Vs[feature] - X[feature].min()) * abs(w[i])  # Queremos aumentar o valor
+                else:
+                    delta_value = (Vs[feature] - X[feature].max()) * abs(w[i])  # Queremos diminuir o valor
+            else:  # Classe negativa (não virginica)
+                if w[i] < 0:
+                    delta_value = (Vs[feature] - X[feature].max()) * abs(w[i])  # Inverso do caso positivo
+                else:
+                    delta_value = (Vs[feature] - X[feature].min()) * abs(w[i])
+            delta.append(delta_value)
 
-        # Calcula R
-        R = sum(delta) - gamma_A
+        # Cálculo de R ajustado
+        R = abs(sum(delta) - gamma_A)  # Usamos valor absoluto
         
-        # Computa a PI-explicação para a instância atual usando nomes das features
-        Xpl = one_explanation(Vs, delta, R, feature_names, modelo, instancia_test, X)
+        # Limiar adaptativo (20% do percentil)
+        #limiar_delta = np.percentile(np.abs(delta), 20)
         
-        # Imprime os resultados todos
-        classe_verdadeira = y_test[idx]
+        Xpl = []
+        delta_sorted = sorted(enumerate(delta), key=lambda x: abs(x[1]), reverse=True)
+        
+        for i, (feature_idx, delta_val) in enumerate(delta_sorted):
+            #if abs(delta_val) < limiar_delta:
+            #    break
+            feature = feature_names[feature_idx]
+            Xpl.append(f"{feature} - {Vs[feature]}")
+            R -= abs(delta_val)
+            if R <= 0:
+                break
+
+        TUDO.append(Xpl)
+        
+        # Exibição dos resultados
         print(f"\nInstância {idx}:")
         print(f"Classe verdadeira (binária): {classe_verdadeira}")
-        print(f"PI-Explicação: ")
+        print("PI-Explicação:" + (" " + ", ".join(Xpl) if Xpl else " _No-PI-explanation_"))
 
-              
-        TUDO.append(Xpl)
-
-        for item in Xpl:
-            print(f"- {item}")
-        
-        if not Xpl:
-            print('_No-PI-explanation_' * 3)
-
-    # Retorna a lista de todas as PI-explicações
     return TUDO
 
 def contar_features_relevantes(TUDO):

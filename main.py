@@ -24,7 +24,7 @@ def main():
 
     print(f"**Dataset '{nome_dataset}' escolhido.**\n")
     print(f"Dataset {nome_dataset} carregado com sucesso!")
-    print(f"Classes disponíveis: {class_names}")
+    print(f"Classes disponíveis: {list(map(str, class_names))}")
     print(f"Total de amostras: {X.shape[0]}")
     print(f"Número de atributos: {X.shape[1]}\n")
 
@@ -33,6 +33,10 @@ def main():
     modelo, X_test, y_test = treinar_modelo(X, y, classe_0=0)
     fim_treinamento = time.time()
     tempo_treinamento = fim_treinamento - inicio_treinamento
+
+    print("\nCoeficientes do modelo:")
+    for name, coef in zip(X.columns, modelo.coef_[0]):
+        print(f"{name}: {coef:.4f}")
 
     # Medindo o tempo de cálculo das PI-explicações
     inicio_pi = time.time()
