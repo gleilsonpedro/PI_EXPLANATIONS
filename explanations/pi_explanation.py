@@ -93,6 +93,7 @@ def analisar_instancias(X_test, y_test, class_names, modelo, X, instancia_para_a
         # Cálculo do valor delta para cada feature
 
         # verificar a classe antes de calcular os deltinhas classe 1 é esta classe 0 é invertido
+       
         delta = []
         w = modelo.coef_[0]
         for i, feature in enumerate(feature_names):
