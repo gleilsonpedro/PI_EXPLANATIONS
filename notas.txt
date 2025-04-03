@@ -27,3 +27,10 @@ Comparação da pi exp´licação com outras técnicas (SHAP e LIME)
     Mostrar as vantagens das explicações em comparação com as outras
     Comparar a complexidade das explicações
     
+
+
+
+
+    ***** pegar média das explicações
+
+    opção de rejeição - adaptando o algoritimo com a minima.

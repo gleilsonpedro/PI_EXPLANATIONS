@@ -89,10 +89,10 @@ def selecionar_dataset_e_classe():
     """
     menu = '''
     |  *************** MENU DE DATASETS (OTIMIZADO) ***************  |
-    | [0] Iris (150×4×3)            | [1] Pima Diabetes (768×8×2)   |
-    | [2] Breast Cancer (569×30×2)  | [3] Heart Disease (303×13×2)  |
-    | [4] MNIST - Dígitos 0/1 (reduzido) | [Q] SAIR                |
-    |---------------------------------------------------------------|
+    | [0] Iris (150×4×3)            | [1] Pima Diabetes (768×8×2)    |
+    | [2] Breast Cancer (569×30×2)  | [ ] Heart Disease  (303×13×2)  |
+    | [4] MNIST - Dígitos 0/1 (reduzido) | [Q] SAIR                  |
+    |----------------------------------------------------------------|
     '''
     print(menu)
 
