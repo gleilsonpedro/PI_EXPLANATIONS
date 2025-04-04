@@ -19,6 +19,26 @@ Sensibilidade = Verdadeiros Positivos (VP) / Verdadeiros Positivos (VP) + Falsos
 
 
 
+## NO ARTIGO O CÁLCULO DOS DELTAS É
+"δ_j = (valor_atual - valor_extremo) * w_j"
+
+
+Classe	Peso (w)	Valor Típico	Fórmula Delta
+0	w > 0	Alto	(valor - min) * w
+0	w < 0	Baixo	(valor - max) * w
+1	w > 0	Baixo	(max - valor) * w	← Invertido!
+1	w < 0	Alto	(min - valor) * w	← Invertido!
+
+
+O que a PI-explicação mostra:
+
+Para instâncias da classe 0: mostra as features que garantem que é dessa classe específica
+
+Para instâncias da classe 1: mostra as features que excluem a possibilidade de ser classe 0
+
+
+
+
 
 
 ########## IDEIAS TEMAS

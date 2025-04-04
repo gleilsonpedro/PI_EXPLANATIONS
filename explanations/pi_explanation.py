@@ -1,152 +1,131 @@
 import numpy as np
 import pandas as pd
 
-def one_explanation(Vs, delta, R, feature_names, modelo, instancia_test, X):
+def calcular_deltas(Vs, X, w, classe_verdadeira):
     """
-    Calcula uma PI-explicação para uma instância específica.
-    * HIPERPARAMETROS:
-        aumentando ou dmnuindo o percentil e multiplicando o valor do delta por uma constante 
-            se > 1 a sensibilidade aumenta ( mais features serão incluidas)
-            se 1 > a sensibilidade diminui ( menos features serão incluidas)
+    Calcula os deltas conforme artigo (Seção 3.2, Eq. 14)
+    
+    Args:
+        Vs: Valores da instância (dict {feature: valor})
+        X: DataFrame completo (para calcular min/max)
+        w: Pesos do modelo (modelo.coef_[0])
+        classe_verdadeira: 0 (classe alvo) ou 1 (outras classes)
+    
+    Returns:
+        Lista de deltas ordenados por magnitude absoluta
     """
-   # limiar_delta = np.percentile(np.abs(delta), 10)  # Pega o percentil 25 dos deltas
+    deltas = []
+    for i, feature in enumerate(Vs.keys()):
+        if classe_verdadeira == 0:  # Classe alvo
+            extremo = X[feature].min() if w[i] < 0 else X[feature].max()
+            delta = (Vs[feature] - extremo) * w[i]
+        else:  # Classe não-alvo (Eq. adaptada)
+            extremo = X[feature].max() if w[i] < 0 else X[feature].min()
+            delta = (extremo - Vs[feature]) * w[i]
+        deltas.append(delta)
+    return deltas
+
+def one_explanation(Vs, delta, R, feature_names, class_names, classe_verdadeira):
+    """
+    Gera uma PI-explicação conforme Algoritmo 1 do artigo
+    
+    Args:
+        Vs: Valores da instância
+        delta: Lista de deltas calculados
+        R: Valor residual (Σδ - γ_A)
+        feature_names: Nomes das features
+        class_names: Nomes das classes
+        classe_verdadeira: 0 ou 1
+    
+    Returns:
+        String formatada com a explicação
+    """
     Xpl = []
+    # Ordena por magnitude absoluta (Artigo p.5)
     delta_sorted = sorted(enumerate(delta), key=lambda x: abs(x[1]), reverse=True)
-    R_atual = R
-    Idx = 0
     
-    while R_atual >= 0 and Idx < len(delta_sorted):
-        sorted_idx, delta_value = delta_sorted[Idx]
-        feature = feature_names[sorted_idx]
-        feature_value = Vs[feature]
-##### verificar se esta ok
-       # if abs(delta_value) < limiar_delta:  # Descarta deltas muito pequenos
-       #    break
-
-        Xpl.append(f"{feature} - {feature_value}")
-       # R_atual -= delta_value * 0.5 # Diminuir a sensibilidade
-        R_atual -= delta_value #* 1.5 # Aumentar a sensibilidade
-        Idx += 1
+    for feature_idx, delta_val in delta_sorted:
+        feature = feature_names[feature_idx]
+        Xpl.append(f"{feature} - {Vs[feature]}")
+        R -= delta_val
+        
+        # Critério de parada do artigo (Eq. 15)
+        if R <= 0:
+            break
     
-    return Xpl
+    # Formatação clara (não presente no artigo, apenas para visualização)
+    if classe_verdadeira == 0:
+        return f"🔷 PI-Explicação para {class_names[0]}: " + ", ".join(Xpl)
+    else:
+        return f"🔶 PI-Explicação para NÃO-{class_names[0]}: " + ", ".join(Xpl)
 
-def encontrar_intervalo_perturbacao(modelo, instancia, feature, valor_original, classe_desejada, X, passo=0.1, max_iter=50):
+def analisar_instancias(X_test, y_test, class_names, modelo, X):
     """
-    Encontra o intervalo de valores para uma feature que mantém a classe desejada.
-    """
-    min_val_data = X[feature].min()
-    max_val_data = X[feature].max()
-    min_val, max_val = valor_original, valor_original
+    Analisa todas as instâncias conforme artigo (Seção 3.2)
     
-    # Perturba negativamente
-    for _ in range(max_iter):
-        min_val -= passo
-        if min_val < min_val_data:
-            min_val = min_val_data
-            break
-        instancia_perturbada = instancia.copy()
-        instancia_perturbada[feature] = min_val
-        predicao = modelo.predict(instancia_perturbada)
-        if predicao[0] != classe_desejada:
-            min_val += passo
-            break
-
-    # Perturba positivamente
-    for _ in range(max_iter):
-        max_val += passo
-        if max_val > max_val_data:
-            max_val = max_val_data
-            break
-        instancia_perturbada = instancia.copy()
-        instancia_perturbada[feature] = max_val
-        predicao = modelo.predict(instancia_perturbada)
-        if predicao[0] != classe_desejada:
-            max_val -= passo
-            break
-
-    return min_val, max_val
-
-def analisar_instancias(X_test, y_test, class_names, modelo, X, instancia_para_analisar=None):
+    Args:
+        X_test: Dados de teste
+        y_test: Classes verdadeiras (binárias)
+        class_names: Nomes das classes
+        modelo: Modelo treinado
+        X: DataFrame completo (para cálculo de min/max)
+    
+    Returns:
+        Lista de explicações para todas as instâncias
+    """
     if not isinstance(X_test, pd.DataFrame):
         X_test = pd.DataFrame(X_test, columns=[f"feature_{i}" for i in range(X_test.shape[1])])
 
     feature_names = X_test.columns.tolist()
-    TUDO = []
+    explicacoes = []
     
     for idx in range(len(X_test)):
         Vs = X_test.iloc[idx].to_dict()
         instancia_test = X_test.iloc[[idx]]
         gamma_A = modelo.decision_function(instancia_test)[0]
         classe_verdadeira = y_test[idx]
-
-        # Cálculo ajustado dos deltas
-        delta = []
+        
+        # 1. Cálculo dos deltas (Artigo Eq. 14)
         w = modelo.coef_[0]
+        delta = calcular_deltas(Vs, X, w, classe_verdadeira)
         
-        for i, feature in enumerate(feature_names):
-            if classe_verdadeira == 0:  # Classe positiva (virginica)
-                if w[i] < 0:
-                    delta_value = (Vs[feature] - X[feature].min()) * abs(w[i])  # Queremos aumentar o valor
-                else:
-                    delta_value = (Vs[feature] - X[feature].max()) * abs(w[i])  # Queremos diminuir o valor
-            else:  # Classe negativa (não virginica)
-                if w[i] < 0:
-                    delta_value = (Vs[feature] - X[feature].max()) * abs(w[i])  # Inverso do caso positivo
-                else:
-                    delta_value = (Vs[feature] - X[feature].min()) * abs(w[i])
-            delta.append(delta_value)
+        # 2. Cálculo de R (Artigo Eq. 15)
+        R = sum(delta) - gamma_A
+        
+        # 3. Gerar explicação (Algoritmo 1)
+        explicacao = one_explanation(Vs, delta, R, feature_names, class_names, classe_verdadeira)
+        explicacoes.append(explicacao)
+        
+        # Debug opcional (não presente no artigo)
+        print(f"\nInstância {idx} (Classe {classe_verdadeira}):")
+        print(f"  Gamma_A: {gamma_A:.4f}, R: {R:.4f}")
+        print(f"  {explicacao}")
+    
+    return explicacoes
 
-        # Cálculo de R ajustado
-        R = abs(sum(delta) - gamma_A)  # Usamos valor absoluto
-        
-        # Limiar adaptativo (20% do percentil)
-        #limiar_delta = np.percentile(np.abs(delta), 20)
-        
-        Xpl = []
-        delta_sorted = sorted(enumerate(delta), key=lambda x: abs(x[1]), reverse=True)
-        
-        for i, (feature_idx, delta_val) in enumerate(delta_sorted):
-            #if abs(delta_val) < limiar_delta:
-            #    break
-            feature = feature_names[feature_idx]
-            Xpl.append(f"{feature} - {Vs[feature]}")
-            R -= abs(delta_val)
-            if R <= 0:
-                break
-
-        TUDO.append(Xpl)
-        
-        # Exibição dos resultados
-        print(f"\nInstância {idx}:")
-        print(f"Classe verdadeira (binária): {classe_verdadeira}")
-        print("PI-Explicação:" + (" " + ", ".join(Xpl) if Xpl else " _No-PI-explanation_"))
-
-    return TUDO
-
-def contar_features_relevantes(TUDO):
+def contar_features_relevantes(explicacoes, class_names):
     """
-    Conta quantas vezes cada feature aparece nas PI-explicações.
+    Conta features relevantes para a classe alvo (apenas para análise)
+    
+    Args:
+        explicacoes: Lista de explicações
+        class_names: Nomes das classes
+    
+    Returns:
+        Dicionário {feature: contagem}
     """
-    contagem_features = {}
-
-    # Itera sobre cada item da lista TUDO
-    for item in TUDO:
-        # Verifica se o item é uma lista
-        if isinstance(item, list):
-            # Itera sobre cada item da lista
-            for feature in item:
-                # Extrai o nome da feature
-                nome_feature = feature.split(" - ")[0]
-
-                # Verifica se a feature já está no dicionário
-                if nome_feature in contagem_features:
-                    # Incrementa a contagem
-                    contagem_features[nome_feature] += 1
-                else:
-                    # Adiciona a feature ao dicionário com contagem 1
-                    contagem_features[nome_feature] = 1
-
-    # Imprime a contagem de features
-    print("\nContagem de features relevantes:")
-    for nome_feature, contagem in contagem_features.items():
-        print(f"Feature: {nome_feature} | Contagem: {contagem}")
+    contagem = {}
+    target_class = class_names[0]
+    
+    for exp in explicacoes:
+        if target_class in exp:  # Apenas explicações da classe alvo
+            features = exp.split(": ")[1].split(", ")
+            for f in features:
+                nome = f.split(" - ")[0]
+                contagem[nome] = contagem.get(nome, 0) + 1
+    
+    print("\n📊 Contagem de Features Relevantes para", target_class)
+    for f, cnt in sorted(contagem.items(), key=lambda x: x[1], reverse=True):
+        print(f"{f}: {cnt}")
+    
+    return contagem
