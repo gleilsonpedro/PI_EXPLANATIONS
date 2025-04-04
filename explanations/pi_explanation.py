@@ -3,8 +3,6 @@ import pandas as pd
 
 def calcular_deltas(Vs, X, w, classe_verdadeira):
     """
-    Calcula os deltas conforme artigo (Seção 3.2, Eq. 14)
-    
     Args:
         Vs: Valores da instância (dict {feature: valor})
         X: DataFrame completo (para calcular min/max)
@@ -19,7 +17,7 @@ def calcular_deltas(Vs, X, w, classe_verdadeira):
         if classe_verdadeira == 0:  # Classe alvo
             extremo = X[feature].min() if w[i] < 0 else X[feature].max()
             delta = (Vs[feature] - extremo) * w[i]
-        else:  # Classe não-alvo (Eq. adaptada)
+        else:  # Classe não-alvo 
             extremo = X[feature].max() if w[i] < 0 else X[feature].min()
             delta = (extremo - Vs[feature]) * w[i]
         deltas.append(delta)
@@ -55,9 +53,9 @@ def one_explanation(Vs, delta, R, feature_names, class_names, classe_verdadeira)
     
     # Formatação clara (não presente no artigo, apenas para visualização)
     if classe_verdadeira == 0:
-        return f"🔷 PI-Explicação para {class_names[0]}: " + ", ".join(Xpl)
+        return f"PI-Explicação - {class_names[0]}: " + ", ".join(Xpl)
     else:
-        return f"🔶 PI-Explicação para NÃO-{class_names[0]}: " + ", ".join(Xpl)
+        return f"PI-Explicação NÃO-{class_names[0]}: " + ", ".join(Xpl)
 
 def analisar_instancias(X_test, y_test, class_names, modelo, X):
     """
@@ -119,13 +117,16 @@ def contar_features_relevantes(explicacoes, class_names):
     
     for exp in explicacoes:
         if target_class in exp:  # Apenas explicações da classe alvo
-            features = exp.split(": ")[1].split(", ")
-            for f in features:
-                nome = f.split(" - ")[0]
-                contagem[nome] = contagem.get(nome, 0) + 1
+            # Extrai a parte após "PI-Explicação para ...: "
+            partes = exp.split(": ")
+            if len(partes) > 1:
+                features = partes[1].split(", ")
+                for f in features:
+                    nome = f.split(" - ")[0].strip()
+                    contagem[nome] = contagem.get(nome, 0) + 1
     
-    print("\n📊 Contagem de Features Relevantes para", target_class)
+    print(f"\n Contagem de Features Relevantes para '{target_class}':")
     for f, cnt in sorted(contagem.items(), key=lambda x: x[1], reverse=True):
-        print(f"{f}: {cnt}")
+        print(f"  {f}: {cnt} ocorrências")
     
     return contagem
