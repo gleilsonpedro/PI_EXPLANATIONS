@@ -15,7 +15,7 @@ def calcular_deltas(Vs, X, w, classe_verdadeira):
     deltas = []
     for i, feature in enumerate(Vs.keys()):
         if classe_verdadeira == 0:  # Classe alvo
-            extremo = X[feature].min() if w[i] < 0 else X[feature].max()
+            extremo = X[feature].max() if w[i] < 0 else X[feature].min()
             delta = (Vs[feature] - extremo) * w[i]
         else:  # Classe não-alvo 
             extremo = X[feature].max() if w[i] < 0 else X[feature].min()
@@ -39,19 +39,30 @@ def one_explanation(Vs, delta, R, feature_names, class_names, classe_verdadeira)
         String formatada com a explicação
     """
     Xpl = []
-    # Ordena por magnitude absoluta (Artigo p.5)
     delta_sorted = sorted(enumerate(delta), key=lambda x: abs(x[1]), reverse=True)
     
-    for feature_idx, delta_val in delta_sorted:
-        feature = feature_names[feature_idx]
-        Xpl.append(f"{feature} - {Vs[feature]}")
-        R -= delta_val
-        
-        # Critério de parada do artigo (Eq. 15)
-        if R <= 0:
-            break
+    # Calcular threshold para considerar features relevantes
+    threshold = 0.1 * abs(sum(delta))  # Considera features que contribuem com pelo menos 10% do total
     
-    # Formatação clara (não presente no artigo, apenas para visualização)
+    for feature_idx, delta_val in delta_sorted:
+        if abs(delta_val) < threshold:
+            continue  # Pula features com contribuição insignificante
+            
+        feature = feature_names[feature_idx]
+        Xpl.append(f"{feature} - {Vs[feature]:.1f} (Δ={delta_val:.2f})")
+        
+        if classe_verdadeira == 0:
+            R -= delta_val
+            if R <= 0: 
+                break
+        else:
+            R += delta_val
+            if R >= 0: 
+                break
+    
+    if not Xpl:  # Se nenhuma feature foi selecionada
+        Xpl.append("Nenhuma feature significativa identificada")
+    
     if classe_verdadeira == 0:
         return f"PI-Explicação - {class_names[0]}: " + ", ".join(Xpl)
     else:
@@ -71,15 +82,28 @@ def analisar_instancias(X_test, y_test, class_names, modelo, X):
     Returns:
         Lista de explicações para todas as instâncias
     """
+    # DEBUG
+    print("\nDEBUG - Valores do Modelo:")
+    print(f"Coeficientes (w): {modelo.coef_[0]}")
+    print(f"Intercept: {modelo.intercept_[0]}")
+    
+    
+    # Garantir que X_test é um DataFrame com nomes consistentes
     if not isinstance(X_test, pd.DataFrame):
-        X_test = pd.DataFrame(X_test, columns=[f"feature_{i}" for i in range(X_test.shape[1])])
-
+        feature_names = X.columns if hasattr(X, 'columns') else [f"feature_{i}" for i in range(X.shape[1])]
+        X_test = pd.DataFrame(X_test, columns=feature_names)
+    
+    # Garantir que X também é DataFrame com mesmos nomes
+    if not isinstance(X, pd.DataFrame):
+        X = pd.DataFrame(X, columns=X_test.columns)
+    
     feature_names = X_test.columns.tolist()
     explicacoes = []
     
     for idx in range(len(X_test)):
         Vs = X_test.iloc[idx].to_dict()
-        instancia_test = X_test.iloc[[idx]]
+        # Criar DataFrame mantendo nomes e estrutura
+        instancia_test = X_test.iloc[[idx]].copy()
         gamma_A = modelo.decision_function(instancia_test)[0]
         classe_verdadeira = y_test[idx]
         
