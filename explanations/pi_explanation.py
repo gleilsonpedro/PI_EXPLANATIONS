@@ -10,26 +10,27 @@ def calcular_deltas(Vs, X, w, classe_verdadeira):
         classe_verdadeira: 0 (classe alvo) ou 1 (outras classes)
     
     Returns:
-        Lista de deltas ordenados por magnitude absoluta
+        Lista de tuplas (feature, delta) ordenadas por magnitude absoluta
     """
     deltas = []
     for i, feature in enumerate(Vs.keys()):
         if classe_verdadeira == 0:  # Classe alvo
-            extremo = X[feature].max() if w[i] < 0 else X[feature].min()
+            extremo = X[feature].min() if w[i] < 0 else X[feature].max()
             delta = (Vs[feature] - extremo) * w[i]
         else:  # Classe não-alvo 
             extremo = X[feature].max() if w[i] < 0 else X[feature].min()
             delta = (extremo - Vs[feature]) * w[i]
-        deltas.append(delta)
+        print(f"[DEBUG] Feature: {feature}, Extremo: {extremo:.2f}, Delta: {delta:.4f}")
+        deltas.append((feature, delta))
     return deltas
 
-def one_explanation(Vs, delta, R, feature_names, class_names, classe_verdadeira):
+def one_explanation(Vs, delta, R, feature_names, class_names, classe_verdadeira, gamma_A):
     """
     Gera uma PI-explicação conforme Algoritmo 1 do artigo
     
     Args:
         Vs: Valores da instância
-        delta: Lista de deltas calculados
+        delta: Lista de tuplas (feature, delta)
         R: Valor residual (Σδ - γ_A)
         feature_names: Nomes das features
         class_names: Nomes das classes
@@ -39,25 +40,25 @@ def one_explanation(Vs, delta, R, feature_names, class_names, classe_verdadeira)
         String formatada com a explicação
     """
     Xpl = []
-    delta_sorted = sorted(enumerate(delta), key=lambda x: abs(x[1]), reverse=True)
+    delta_sorted = sorted(delta, key=lambda x: abs(x[1]), reverse=True)
     
     # Calcular threshold para considerar features relevantes
-    threshold = 0.1 * abs(sum(delta))  # Considera features que contribuem com pelo menos 10% do total
+    max_delta = max(abs(d[1]) for d in delta_sorted) if delta_sorted else 0
+    threshold = 0.1 * max_delta
     
-    for feature_idx, delta_val in delta_sorted:
+    R_cumulative = 0
+    for feature, delta_val in delta_sorted:
         if abs(delta_val) < threshold:
             continue  # Pula features com contribuição insignificante
             
-        feature = feature_names[feature_idx]
         Xpl.append(f"{feature} - {Vs[feature]:.1f} (Δ={delta_val:.2f})")
+        R_cumulative += delta_val
         
         if classe_verdadeira == 0:
-            R -= delta_val
-            if R <= 0: 
+            if (R_cumulative - gamma_A) <= threshold: 
                 break
         else:
-            R += delta_val
-            if R >= 0: 
+            if (R_cumulative - gamma_A) >= -threshold:
                 break
     
     if not Xpl:  # Se nenhuma feature foi selecionada
@@ -111,16 +112,16 @@ def analisar_instancias(X_test, y_test, class_names, modelo, X):
         w = modelo.coef_[0]
         delta = calcular_deltas(Vs, X, w, classe_verdadeira)
         
-        # 2. Cálculo de R (Artigo Eq. 15)
-        R = sum(delta) - gamma_A
+        # 2. Cálculo de R inicial (não usado diretamente agora)
+        R = sum(d[1] for d in delta) - gamma_A
         
         # 3. Gerar explicação (Algoritmo 1)
-        explicacao = one_explanation(Vs, delta, R, feature_names, class_names, classe_verdadeira)
+        explicacao = one_explanation(Vs, delta, R, feature_names, class_names, classe_verdadeira, gamma_A)
         explicacoes.append(explicacao)
         
         # Debug opcional (não presente no artigo)
         print(f"\nInstância {idx} (Classe {classe_verdadeira}):")
-        print(f"  Gamma_A: {gamma_A:.4f}, R: {R:.4f}")
+        print(f"  Gamma_A: {gamma_A:.4f}, R inicial: {R:.4f}")
         print(f"  {explicacao}")
     
     return explicacoes
