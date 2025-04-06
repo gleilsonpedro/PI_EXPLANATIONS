@@ -68,26 +68,27 @@ def one_explanation(Vs, delta, R, feature_names, class_names, classe_verdadeira)
     else:
         return f"PI-Explicação NÃO-{class_names[0]}: " + ", ".join(Xpl)
 
-def analisar_instancias(X_test, y_test, class_names, modelo, X):
+def analisar_instancias(X_test, y_test, class_names, modelo, X, gamma_reject=0.5):
     """
-    Analisa todas as instâncias conforme artigo (Seção 3.2)
+    Analisa todas as instâncias com opção de rejeição
     
     Args:
-        X_test: Dados de teste
+        X_test: Dados de teste (DataFrame ou array)
         y_test: Classes verdadeiras (binárias)
         class_names: Nomes das classes
-        modelo: Modelo treinado
+        modelo: Modelo treinado (deve ter decision_function)
         X: DataFrame completo (para cálculo de min/max)
+        gamma_reject: Limiar para rejeição (default: 0.5) quanto mais alto mais rejeições
     
     Returns:
         Lista de explicações para todas as instâncias
     """
-    # DEBUG
+    # DEBUG - Mostrar parâmetros do modelo
     print("\nDEBUG - Valores do Modelo:")
     print(f"Coeficientes (w): {modelo.coef_[0]}")
     print(f"Intercept: {modelo.intercept_[0]}")
-    
-    
+    print(f"Limiar de rejeição: |γ_A| < {gamma_reject}")
+
     # Garantir que X_test é um DataFrame com nomes consistentes
     if not isinstance(X_test, pd.DataFrame):
         feature_names = X.columns if hasattr(X, 'columns') else [f"feature_{i}" for i in range(X.shape[1])]
@@ -99,12 +100,22 @@ def analisar_instancias(X_test, y_test, class_names, modelo, X):
     
     feature_names = X_test.columns.tolist()
     explicacoes = []
+    rejeicoes = []  # Lista para armazenar índices das rejeições
     
     for idx in range(len(X_test)):
         Vs = X_test.iloc[idx].to_dict()
-        # Criar DataFrame mantendo nomes e estrutura
         instancia_test = X_test.iloc[[idx]].copy()
         gamma_A = modelo.decision_function(instancia_test)[0]
+        
+        # Verificar rejeição
+        if abs(gamma_A) < gamma_reject:
+            msg = f"Instância {idx} REJEITADA | Classe real: {class_names[y_test[idx]]} | " \
+                  f"|γ_A|={abs(gamma_A):.2f} < {gamma_reject} | " \
+                  f"Valores: {Vs}"
+            explicacoes.append(msg)
+            rejeicoes.append(idx)
+            continue
+            
         classe_verdadeira = y_test[idx]
         
         # 1. Cálculo dos deltas (Artigo Eq. 14)
@@ -118,19 +129,33 @@ def analisar_instancias(X_test, y_test, class_names, modelo, X):
         explicacao = one_explanation(Vs, delta, R, feature_names, class_names, classe_verdadeira)
         explicacoes.append(explicacao)
         
-        # Debug opcional (não presente no artigo)
+        # Debug opcional
         print(f"\nInstância {idx} (Classe {classe_verdadeira}):")
         print(f"  Gamma_A: {gamma_A:.4f}, R: {R:.4f}")
         print(f"  {explicacao}")
+
+    # Relatório consolidado
+    print(f"\nResumo - Total de instâncias: {len(X_test)}")
+    print(f"Instâncias rejeitadas: {len(rejeicoes)} ({len(rejeicoes)/len(X_test):.1%})")
+    print(f"Instâncias classificadas: {len(X_test)-len(rejeicoes)}")
+    
+    # Detalhes das rejeições (se houver)
+    if rejeicoes:
+        print("\n=== DETALHES DAS REJEIÇÕES ===")
+        for idx in rejeicoes:
+            print(explicacoes[idx])
+    else:
+        print("\nNenhuma instância rejeitada com o limiar atual.")
     
     return explicacoes
 
 def contar_features_relevantes(explicacoes, class_names):
     """
     Conta features relevantes para a classe alvo (apenas para análise)
+    Ignora instâncias rejeitadas na contagem
     
     Args:
-        explicacoes: Lista de explicações
+        explicacoes: Lista de explicações (pode conter rejeições)
         class_names: Nomes das classes
     
     Returns:
@@ -140,6 +165,10 @@ def contar_features_relevantes(explicacoes, class_names):
     target_class = class_names[0]
     
     for exp in explicacoes:
+        # Pular instâncias rejeitadas
+        if "REJEITADA" in exp:
+            continue
+            
         if target_class in exp:  # Apenas explicações da classe alvo
             # Extrai a parte após "PI-Explicação para ...: "
             partes = exp.split(": ")
@@ -149,7 +178,7 @@ def contar_features_relevantes(explicacoes, class_names):
                     nome = f.split(" - ")[0].strip()
                     contagem[nome] = contagem.get(nome, 0) + 1
     
-    print(f"\n Contagem de Features Relevantes para '{target_class}':")
+    print(f"\nContagem de Features Relevantes para '{target_class}' (excluindo rejeições):")
     for f, cnt in sorted(contagem.items(), key=lambda x: x[1], reverse=True):
         print(f"  {f}: {cnt} ocorrências")
     
