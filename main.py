@@ -9,11 +9,126 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
-# Suprimir warnings dos plots
+# Configurações de estilo - CORREÇÃO AQUI
+sns.set_style("whitegrid")  # Usando estilo do Seaborn diretamente
+plt.style.use('ggplot')     # Estilo alternativo válido
 warnings.filterwarnings("ignore")
 
 def limpar_terminal():
     os.system('cls' if os.name == 'nt' else 'clear')
+
+def plot_gamma_distribution(gamma_values, gamma_reject, nome_dataset, classe_0_nome):
+    """Plot aprimorado da distribuição de gamma"""
+    plt.figure(figsize=(12, 6))
+    
+    # Histograma com KDE
+    ax = sns.histplot(gamma_values, bins=20, kde=True, color='skyblue', 
+                     edgecolor='navy', alpha=0.7)
+    
+    # Região de rejeição
+    reject_min, reject_max = -gamma_reject, gamma_reject
+    plt.axvspan(reject_min, reject_max, color='salmon', alpha=0.3, 
+               label='Região de Rejeição')
+    
+    # Linhas de referência
+    plt.axvline(reject_min, color='red', linestyle='--', linewidth=1.5, 
+               label=f'Limiar inferior (-{gamma_reject})')
+    plt.axvline(reject_max, color='red', linestyle='--', linewidth=1.5,
+               label=f'Limiar superior ({gamma_reject})')
+    plt.axvline(0, color='green', linestyle='-', linewidth=2, 
+               label='Fronteira de Decisão')
+    
+    # Estatísticas
+    total = len(gamma_values)
+    rejeitadas = sum(1 for g in gamma_values if abs(g) < gamma_reject)
+    
+    # Configurações do gráfico
+    plt.title(f'Distribuição dos Valores de Decisão (γ_A)\nDataset: {nome_dataset} | Classe 0: {classe_0_nome}', 
+             pad=20, fontsize=14)
+    plt.xlabel('Valor de γ_A (Função de Decisão)', fontsize=12)
+    plt.ylabel('Número de Instâncias', fontsize=12)
+    plt.grid(axis='y', alpha=0.3)
+    
+    # Legenda com estatísticas
+    stats_text = f"""Total: {total} instâncias
+Classificadas: {total-rejeitadas} ({(total-rejeitadas)/total:.1%})
+Rejeitadas: {rejeitadas} ({rejeitadas/total:.1%})"""
+    plt.annotate(stats_text, xy=(0.98, 0.95), xycoords='axes fraction', 
+                 ha='right', va='top', fontsize=10,
+                 bbox=dict(boxstyle='round', alpha=0.2))
+    
+    # Anotação explicativa
+    plt.annotate('γ_A = w·x + b\n(valor da função de decisão)', 
+                xy=(0.02, 0.95), xycoords='axes fraction',
+                ha='left', va='top', fontsize=10)
+    
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.tight_layout()
+    
+    return plt
+
+def plot_analysis(X, y, contagem, nome_dataset, classe_0_nome, gamma_values, y_test):  # Adicionei y_test nos parâmetros
+    """Plot composto aprimorado"""
+    plt.figure(figsize=(18, 6))
+    
+    # 1. Gráfico de importância de features - ordenado e com valores
+    plt.subplot(1, 3, 1)
+    features = sorted(contagem.keys(), key=lambda x: contagem[x], reverse=True)
+    counts = [contagem[f] for f in features]
+    
+    bars = plt.barh(features, counts, color=sns.color_palette("husl", len(features)))
+    plt.bar_label(bars, padding=3, labels=[f'{v}' for v in counts], fontsize=10)
+    
+    plt.title(f'Features Mais Relevantes para\n{classe_0_nome}', fontsize=12)
+    plt.xlabel('Número de Ocorrências nas Explicações', fontsize=10)
+    plt.ylabel('Features', fontsize=10)
+    plt.grid(axis='x', linestyle='--', alpha=0.7)
+    plt.xlim(0, max(counts)*1.1)
+    
+    # 2. Boxplot das features por classe
+    plt.subplot(1, 3, 2)
+    df = X.copy()
+    y_series = pd.Series(y)
+    df['Classe'] = y_series.map({0: classe_0_nome, 1: 'Outras Classes'})
+    
+    # Selecionar apenas as features mais relevantes
+    top_features = features[:3]  # Mostrar apenas as 3 mais importantes
+    df_melted = df.melt(id_vars='Classe', value_vars=top_features, 
+                       var_name='Feature', value_name='Valor')
+    
+    sns.boxplot(data=df_melted, x='Feature', y='Valor', hue='Classe',
+               palette={classe_0_nome: 'green', 'Outras Classes': 'orange'})
+    
+    plt.title(f'Distribuição das Top 3 Features\npor Classe', fontsize=12)
+    plt.xticks(rotation=45, fontsize=10)
+    plt.xlabel('')
+    plt.ylabel('Valor Normalizado', fontsize=10)
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    
+    # 3. Histograma de Gamma_A com distribuição por classe
+    plt.subplot(1, 3, 3)
+    df_test = pd.DataFrame({'gamma_A': gamma_values, 'Classe': y_test})  # Agora y_test está definido
+    
+    sns.histplot(data=df_test, x='gamma_A', hue='Classe', 
+                bins=20, kde=True, 
+                palette={0: 'green', 1: 'orange'},
+                hue_order=[0, 1],
+                element='step', stat='density', common_norm=False)
+    
+    plt.axvline(0, color='red', linestyle='--', linewidth=1.5, 
+               label='Fronteira de Decisão')
+    plt.title('Distribuição de γ_A por Classe Real', fontsize=12)
+    plt.xlabel('Valor da Função de Decisão (γ_A)', fontsize=10)
+    plt.ylabel('Densidade', fontsize=10)
+    plt.legend(fontsize=9)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    
+    plt.suptitle(f'Análise Explicativa para {nome_dataset.capitalize()}\nClasse Alvo: {classe_0_nome}', 
+                fontsize=14, y=1.05)
+    plt.tight_layout()
+    
+    return plt
 
 def main():
     # Selecionar dataset e classe
@@ -61,90 +176,18 @@ def main():
     print("\n**Contagem de features relevantes:**")
     contagem = contar_features_relevantes(explicacoes, classe_0_nome)
 
-    # ========== NOVO GRÁFICO DE DISTRIBUIÇÃO ==========
-    plt.figure(figsize=(14, 6))
-    
-    # Coletar todos os valores gamma_A
-    gammas = [modelo.decision_function(X_test_df.iloc[[i]])[0] for i in range(len(X_test_df))]
-    
-    # Histograma
-    n, bins, patches = plt.hist(gammas, bins=20, color='skyblue', edgecolor='black', alpha=0.7)
-    
-    # Destacar região de rejeição
-    reject_mask = (bins > -gamma_reject) & (bins < gamma_reject)
-    for patch, is_reject in zip(patches, reject_mask[:-1]):
-        if is_reject:
-            patch.set_facecolor('salmon')
-    
-    # Linhas de referência
-    plt.axvline(-gamma_reject, color='red', linestyle='--', label=f'Limiar inferior (-{gamma_reject})')
-    plt.axvline(gamma_reject, color='red', linestyle='--', label=f'Limiar superior ({gamma_reject})')
-    plt.axvline(0, color='green', linestyle='-', label='Fronteira de decisão')
-    
-    # Estatísticas
-    total = len(gammas)
-    rejeitadas = sum(1 for g in gammas if abs(g) < gamma_reject)
-    
-    plt.title(f'Distribuição dos Valores de Decisão (γ_A)\nDataset: {nome_dataset} | Classe 0: {classe_0_nome}', pad=15)
-    plt.xlabel('Valor de γ_A (Função de Decisão)')
-    plt.ylabel('Número de Instâncias')
-    plt.grid(axis='y', alpha=0.3)
-    
-    # Legenda com estatísticas
-    stats_text = f"""Total: {total} instâncias
-Classificadas: {total-rejeitadas} ({(total-rejeitadas)/total:.1%})
-Rejeitadas: {rejeitadas} ({rejeitadas/total:.1%})"""
-    plt.annotate(stats_text, xy=(0.98, 0.95), xycoords='axes fraction', 
-                 ha='right', va='top', bbox=dict(boxstyle='round', alpha=0.1))
-    
-    plt.legend()
-    plt.tight_layout()
-    
-    # Salvar automaticamente
-    plt.savefig(f'gamma_distribution_{nome_dataset}.png', dpi=300, bbox_inches='tight')
-    plt.show()
-    # ========== FIM DO NOVO GRÁFICO ==========
+    # Coletar todos os valores gamma_A para visualização
+    gamma_values = [modelo.decision_function(X_test_df.iloc[[i]])[0] for i in range(len(X_test_df))]
 
-    # Plotar visualizações originais
-    plt.figure(figsize=(12, 5))
-    
-    # 1. Gráfico de importância de features
-    plt.subplot(1, 3, 1)
-    features = list(contagem.keys())
-    counts = list(contagem.values())
-    sns.barplot(x=counts, y=features, hue=features, palette='viridis', legend=False, dodge=False)
-    plt.title('Frequência de Features nas Explicações')
-    plt.xlabel('Número de Ocorrências')
-    plt.ylabel('Features')
-    plt.grid(axis='x', linestyle='--', alpha=0.7)
-    
-    # 2. Boxplot das features por classe
-    plt.subplot(1, 3, 2)
-    df = X.copy()
-    y_series = pd.Series(y)
-    df['Classe'] = y_series.map({0: classe_0_nome, 1: 'Outras'})
-    df_melted = df.melt(id_vars='Classe', var_name='Feature', value_name='Valor')
-    sns.boxplot(data=df_melted, x='Feature', y='Valor', hue='Classe', 
-               palette={classe_0_nome: 'green', 'Outras': 'orange'})
-    plt.title(f'Distribuição por Classe\n(Classe 0: {classe_0_nome})')
-    plt.xticks(rotation=45)
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    
-    # 3. Histograma de Gamma_A (versão simplificada)
-    plt.subplot(1, 3, 3)
-    gamma_values = [modelo.decision_function([X_test_df.iloc[i]])[0] for i in range(len(X_test_df))]
-    sns.histplot(gamma_values, bins=20, kde=True, color='purple')
-    plt.axvline(0, color='red', linestyle='--', label='Limiar de Decisão')
-    plt.title('Distribuição dos Valores de Decisão')
-    plt.xlabel('Gamma_A (Valor de Decisão)')
-    plt.ylabel('Número de Instâncias')
-    plt.legend()
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    
-    plt.tight_layout()
-    plt.savefig(f'analysis_{nome_dataset}.png', dpi=300, bbox_inches='tight')
-    plt.show()
+    # Plotar distribuição de gamma
+    gamma_plot = plot_gamma_distribution(gamma_values, gamma_reject, nome_dataset, classe_0_nome)
+    gamma_plot.savefig(f'gamma_distribution_{nome_dataset}.png', dpi=300, bbox_inches='tight')
+    gamma_plot.show()
+
+    # Plotar análise composta
+    analysis_plot = plot_analysis(X_df, y, contagem, nome_dataset, classe_0_nome, gamma_values, y_test)
+    analysis_plot.savefig(f'analysis_{nome_dataset}.png', dpi=300, bbox_inches='tight')
+    analysis_plot.show()
 
     # Tempo total
     tempo_total = tempo_treinamento + tempo_pi
