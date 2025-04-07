@@ -67,66 +67,47 @@ Rejeitadas: {rejeitadas} ({rejeitadas/total:.1%})"""
     
     return plt
 
-def plot_analysis(X, y, contagem, nome_dataset, classe_0_nome, gamma_values, y_test):  # Adicionei y_test nos parâmetros
-    """Plot composto aprimorado"""
-    plt.figure(figsize=(18, 6))
+def plot_analysis(X, y, contagem, nome_dataset, classe_0_nome, gamma_values, y_test):
+    plt.figure(figsize=(16, 8))  # Tamanho ajustado para 2 plots
+    sns.set(font_scale=1.0)
+    plt.rcParams['font.family'] = 'DejaVu Sans'
     
-    # 1. Gráfico de importância de features - ordenado e com valores
-    plt.subplot(1, 3, 1)
-    features = sorted(contagem.keys(), key=lambda x: contagem[x], reverse=True)
-    counts = [contagem[f] for f in features]
+    # Layout otimizado para 2 plots lado a lado
+    gs = plt.GridSpec(1, 2, width_ratios=[1, 1.5], wspace=0.4)
     
-    bars = plt.barh(features, counts, color=sns.color_palette("husl", len(features)))
-    plt.bar_label(bars, padding=3, labels=[f'{v}' for v in counts], fontsize=10)
+    # 1. Gráfico de features (esquerda)
+    ax1 = plt.subplot(gs[0, 0])
+    features = [f.replace("sepel", "sepal").replace("pedal", "petal") 
+               for f in sorted(contagem.keys(), key=lambda x: contagem[x], reverse=True)]
+    counts = [contagem[f] for f in contagem.keys()]
     
-    plt.title(f'Features Mais Relevantes para\n{classe_0_nome}', fontsize=12)
-    plt.xlabel('Número de Ocorrências nas Explicações', fontsize=10)
-    plt.ylabel('Features', fontsize=10)
-    plt.grid(axis='x', linestyle='--', alpha=0.7)
-    plt.xlim(0, max(counts)*1.1)
+    bars = ax1.barh(features[:4], counts[:4], color=sns.color_palette("husl", 4))
+    ax1.bar_label(bars, fmt='%d', padding=3, fontsize=10)
+    ax1.set_title('Features Mais Relevantes', fontsize=12, pad=10, fontweight='bold')
+    ax1.set_xlabel('Número de Ocorrências', fontsize=10)
+    ax1.set_ylabel('')
+    ax1.grid(axis='x', alpha=0.2)
     
-    # 2. Boxplot das features por classe
-    plt.subplot(1, 3, 2)
-    df = X.copy()
-    y_series = pd.Series(y)
-    df['Classe'] = y_series.map({0: classe_0_nome, 1: 'Outras Classes'})
+    # 2. Boxplot (direita)
+    ax2 = plt.subplot(gs[0, 1])
+    df = X.rename(columns=lambda x: x.replace("sepel", "sepal").replace("pedal", "petal")).copy()
+    df['Classe'] = pd.Series(y).map({0: classe_0_nome, 1: 'Outras'})
     
-    # Selecionar apenas as features mais relevantes
-    top_features = features[:3]  # Mostrar apenas as 3 mais importantes
-    df_melted = df.melt(id_vars='Classe', value_vars=top_features, 
-                       var_name='Feature', value_name='Valor')
+    sns.boxplot(data=df.melt(id_vars='Classe', value_vars=features[:4]), 
+               x='variable', y='value', hue='Classe',
+               palette={classe_0_nome: '#3498db', 'Outras': '#e74c3c'},
+               ax=ax2, linewidth=1.2, width=0.7)
     
-    sns.boxplot(data=df_melted, x='Feature', y='Valor', hue='Classe',
-               palette={classe_0_nome: 'green', 'Outras Classes': 'orange'})
+    ax2.set_title('Distribuição por Classe', fontsize=12, pad=10, fontweight='bold')
+    ax2.set_xlabel('')
+    ax2.set_ylabel('Valor (cm)', fontsize=10)
+    ax2.legend(title='Classe', bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=10)
+    ax2.tick_params(axis='x', rotation=30, labelsize=10)
+    ax2.grid(axis='y', alpha=0.2)
     
-    plt.title(f'Distribuição das Top 3 Features\npor Classe', fontsize=12)
-    plt.xticks(rotation=45, fontsize=10)
-    plt.xlabel('')
-    plt.ylabel('Valor Normalizado', fontsize=10)
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9)
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    
-    # 3. Histograma de Gamma_A com distribuição por classe
-    plt.subplot(1, 3, 3)
-    df_test = pd.DataFrame({'gamma_A': gamma_values, 'Classe': y_test})  # Agora y_test está definido
-    
-    sns.histplot(data=df_test, x='gamma_A', hue='Classe', 
-                bins=20, kde=True, 
-                palette={0: 'green', 1: 'orange'},
-                hue_order=[0, 1],
-                element='step', stat='density', common_norm=False)
-    
-    plt.axvline(0, color='red', linestyle='--', linewidth=1.5, 
-               label='Fronteira de Decisão')
-    plt.title('Distribuição de γ_A por Classe Real', fontsize=12)
-    plt.xlabel('Valor da Função de Decisão (γ_A)', fontsize=10)
-    plt.ylabel('Densidade', fontsize=10)
-    plt.legend(fontsize=9)
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    
-    plt.suptitle(f'Análise Explicativa para {nome_dataset.capitalize()}\nClasse Alvo: {classe_0_nome}', 
-                fontsize=14, y=1.05)
-    plt.tight_layout()
+    plt.suptitle(f'Análise Explicativa: {nome_dataset.capitalize()} - Classe {classe_0_nome}', 
+                y=0.98, fontsize=14, fontweight='bold')
+    plt.tight_layout(pad=2.0)
     
     return plt
 
