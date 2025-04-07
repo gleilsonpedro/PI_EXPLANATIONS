@@ -23,7 +23,7 @@ def calcular_deltas(Vs, X, w, classe_verdadeira):
         deltas.append(delta)
     return deltas
 
-def one_explanation(Vs, delta, R, feature_names, class_names, classe_verdadeira):
+def one_explanation(Vs, delta, R, feature_names, classe_0_nome, classe_verdadeira):
     """
     Gera uma PI-explicação conforme Algoritmo 1 do artigo
     
@@ -64,11 +64,11 @@ def one_explanation(Vs, delta, R, feature_names, class_names, classe_verdadeira)
         Xpl.append("Nenhuma feature significativa identificada")
     
     if classe_verdadeira == 0:
-        return f"PI-Explicação - {class_names[0]}: " + ", ".join(Xpl)
+        return f"PI-Explicação - {classe_0_nome}: " + ", ".join(Xpl)
     else:
-        return f"PI-Explicação NÃO-{class_names[0]}: " + ", ".join(Xpl)
+        return f"PI-Explicação NÃO-{classe_0_nome}: " + ", ".join(Xpl)
 
-def analisar_instancias(X_test, y_test, class_names, modelo, X, gamma_reject=0.5):
+def analisar_instancias(X_test, y_test, classe_0_nome, class_names, modelo, X, gamma_reject = 0.5):
     """
     Analisa todas as instâncias com opção de rejeição
     
@@ -109,9 +109,15 @@ def analisar_instancias(X_test, y_test, class_names, modelo, X, gamma_reject=0.5
         
         # Verificar rejeição
         if abs(gamma_A) < gamma_reject:
-            msg = f"Instância {idx} REJEITADA | Classe real: {class_names[y_test[idx]]} | " \
-                  f"|γ_A|={abs(gamma_A):.2f} < {gamma_reject} | " \
-                  f"Valores: {Vs}"
+            if gamma_A >= 0:
+                status = f"PRÓXIMA DA CLASSE 1 (NÃO-{classe_0_nome})"
+            else:
+                status = f"PRÓXIMA DA CLASSE 0 ({classe_0_nome})"
+                
+            msg = (f"Instância {idx} REJEITADA | {status} | "
+                   f"Classe real: {class_names[y_test[idx]]} | "
+                   f"|γ_A|={abs(gamma_A):.2f} < {gamma_reject} | "
+                   f"Valores: {Vs}")
             explicacoes.append(msg)
             rejeicoes.append(idx)
             continue
@@ -126,7 +132,7 @@ def analisar_instancias(X_test, y_test, class_names, modelo, X, gamma_reject=0.5
         R = sum(delta) - gamma_A
         
         # 3. Gerar explicação (Algoritmo 1)
-        explicacao = one_explanation(Vs, delta, R, feature_names, class_names, classe_verdadeira)
+        explicacao = one_explanation(Vs, delta, R, feature_names, classe_0_nome, classe_verdadeira)
         explicacoes.append(explicacao)
         
         # Debug opcional
@@ -149,7 +155,7 @@ def analisar_instancias(X_test, y_test, class_names, modelo, X, gamma_reject=0.5
     
     return explicacoes
 
-def contar_features_relevantes(explicacoes, class_names):
+def contar_features_relevantes(explicacoes, classe_0_nome):
     """
     Conta features relevantes para a classe alvo (apenas para análise)
     Ignora instâncias rejeitadas na contagem
@@ -162,15 +168,12 @@ def contar_features_relevantes(explicacoes, class_names):
         Dicionário {feature: contagem}
     """
     contagem = {}
-    target_class = class_names[0]
     
     for exp in explicacoes:
-        # Pular instâncias rejeitadas
         if "REJEITADA" in exp:
             continue
             
-        if target_class in exp:  # Apenas explicações da classe alvo
-            # Extrai a parte após "PI-Explicação para ...: "
+        if classe_0_nome in exp:  # Agora usando classe_0_nome diretamente
             partes = exp.split(": ")
             if len(partes) > 1:
                 features = partes[1].split(", ")
@@ -178,7 +181,7 @@ def contar_features_relevantes(explicacoes, class_names):
                     nome = f.split(" - ")[0].strip()
                     contagem[nome] = contagem.get(nome, 0) + 1
     
-    print(f"\nContagem de Features Relevantes para '{target_class}' (excluindo rejeições):")
+    print(f"\nContagem de Features Relevantes para '{classe_0_nome}' (excluindo rejeições):")
     for f, cnt in sorted(contagem.items(), key=lambda x: x[1], reverse=True):
         print(f"  {f}: {cnt} ocorrências")
     

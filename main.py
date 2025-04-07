@@ -53,13 +53,13 @@ def main():
     # Calcular PI-explicações com limiar de rejeição
     gamma_reject = 0.5  # Pode ser ajustado conforme necessidade
     inicio_pi = time.time()
-    explicacoes = analisar_instancias(X_test_df, y_test, class_names, modelo, X_df, gamma_reject)
+    explicacoes = analisar_instancias(X_test_df, y_test, classe_0_nome, class_names, modelo, X_df, gamma_reject)
     fim_pi = time.time()
     tempo_pi = fim_pi - inicio_pi
 
     # Contar features relevantes
     print("\n**Contagem de features relevantes:**")
-    contagem = contar_features_relevantes(explicacoes, class_names)
+    contagem = contar_features_relevantes(explicacoes, classe_0_nome)
 
     # ========== NOVO GRÁFICO DE DISTRIBUIÇÃO ==========
     plt.figure(figsize=(14, 6))
