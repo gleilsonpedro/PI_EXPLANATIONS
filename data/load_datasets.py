@@ -8,11 +8,11 @@ import os
 from io import StringIO
 
 # Timeout para requisições web (segundos)
-REQUEST_TIMEOUT = 15
+REQUEST_TIMEOUT = 20
 
 def carregar_dataset(nome_dataset, reduzir_mnist=True, tamanho_mnist=1000):
     """
-    Carrega os 5 datasets focados com tratamento robusto.
+    Carrega os datasets com tratamento robusto.
     Parâmetros:
         - reduzir_mnist: Se True, reduz MNIST para tamanho_mnist amostras
         - tamanho_mnist: Número de amostras para manter no MNIST
@@ -26,43 +26,24 @@ def carregar_dataset(nome_dataset, reduzir_mnist=True, tamanho_mnist=1000):
             
         elif nome_dataset == 'pima_indians_diabetes':
             url = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.csv"
-            data = pd.read_csv(url)
+            col_names = ['num_gravidezes', 'glicose', 'pressao_sangue', 'espessura_pele',
+                        'insulina', 'imc', 'diabetes_pedigree', 'idade', 'target']
+            data = pd.read_csv(url, header=None, names=col_names)
             X = data.iloc[:, :-1]
             y = data.iloc[:, -1]
             class_names = ['Não Diabético', 'Diabético']
             
         elif nome_dataset == 'breast_cancer':
-            # Usando dataset direto do sklearn
             data = load_breast_cancer()
             X = pd.DataFrame(data.data, columns=data.feature_names)
             y = data.target
             class_names = list(data.target_names)
             
-        elif nome_dataset == 'heart_disease':
-            # Dataset corrigido do Heart Disease
-            url = "https://archive.ics.uci.edu/ml/machine-learning-databases/heart-disease/processed.cleveland.data"
-            try:
-                data = pd.read_csv(url, header=None, na_values="?")
-            except:
-                # Fallback local se necessário
-                print("Usando fallback local para Heart Disease")
-                data = pd.read_csv("heart_disease.csv", header=None, na_values="?")
-            
-            data = data.dropna()
-            X = data.iloc[:, :-1]
-            y = data.iloc[:, -1].apply(lambda x: 1 if x > 0 else 0)
-            class_names = ['Sem Doença Cardíaca', 'Com Doença Cardíaca']
-            
         elif nome_dataset == 'mnist':
-            # Carrega MNIST e reduz automaticamente
             data = fetch_openml('mnist_784', version=1, as_frame=False)
             X, y = data.data, data.target.astype(int)
-            
-            # Filtra apenas dígitos 0 e 1
             mask = (y == 0) | (y == 1)
             X, y = X[mask], y[mask]
-            
-            # Reduz o tamanho se solicitado
             if reduzir_mnist and len(X) > tamanho_mnist:
                 X, _, y, _ = train_test_split(
                     X, y,
@@ -70,9 +51,19 @@ def carregar_dataset(nome_dataset, reduzir_mnist=True, tamanho_mnist=1000):
                     stratify=y,
                     random_state=42
                 )
-            
             X = pd.DataFrame(X)
             class_names = ['Dígito 0', 'Dígito 1']
+            
+        elif nome_dataset == 'creditcard':
+            data = fetch_openml('creditcard', version=1, as_frame=True)
+            X, y = data.data, data.target.astype(int)
+            X, _, y, _ = train_test_split(
+                X, y,
+                train_size=0.05,
+                stratify=y,
+                random_state=42
+            )
+            class_names = ['Normal', 'Fraude']
             
         else:
             raise ValueError("Dataset não suportado.")
@@ -80,25 +71,25 @@ def carregar_dataset(nome_dataset, reduzir_mnist=True, tamanho_mnist=1000):
         return X, y, class_names
         
     except Exception as e:
-        print(f"\n Erro ao carregar {nome_dataset}: {str(e)}")
+        print(f"\nErro ao carregar {nome_dataset}: {str(e)}")
         return None, None, None
 
 def selecionar_dataset_e_classe():
     """
-    Menu interativo com todas as correções implementadas.
+    Menu interativo com datasets testados e funcionais
     """
     menu = '''
-    |  *************** MENU DE DATASETS (OTIMIZADO) ***************  |
-    | [0] Iris (150×4×3)            | [1] Pima Diabetes (768×8×2)    |
-    | [2] Breast Cancer (569×30×2)  | [ ] Heart Disease  (303×13×2)  |
-    | [4] MNIST - Dígitos 0/1 (reduzido) | [Q] SAIR                  |
-    |----------------------------------------------------------------|
+    | **************** MENU DE DATASETS CONFIÁVEIS **************** |
+    | [0] Iris (150×4×3)             | [1] Pima Diabetes (768×8×2)  |
+    | [2] Breast Cancer (569×30×2)   | [3] MNIST - Dígitos 0/1      |
+    | [4] Creditcard Fraud (284×30×2)| [Q] SAIR                     |
+    |---------------------------------------------------------------|
     '''
     print(menu)
 
     nomes_datasets = [
         'iris', 'pima_indians_diabetes', 'breast_cancer',
-        'heart_disease', 'mnist'
+        'mnist', 'creditcard'
     ]
 
     while True:
@@ -111,9 +102,11 @@ def selecionar_dataset_e_classe():
             nome_dataset = nomes_datasets[int(opcao)]
             print(f"\nCarregando {nome_dataset}...")
             
-            # Configurações especiais para MNIST
             if nome_dataset == 'mnist':
                 X, y, class_names = carregar_dataset(nome_dataset, reduzir_mnist=True, tamanho_mnist=1000)
+            elif nome_dataset == 'creditcard':
+                print("Aviso: Dataset grande, carregamento pode demorar...")
+                X, y, class_names = carregar_dataset(nome_dataset)
             else:
                 X, y, class_names = carregar_dataset(nome_dataset)
             
@@ -123,11 +116,9 @@ def selecionar_dataset_e_classe():
                 
             print(f"Dataset carregado! (Amostras: {X.shape[0]}, Features: {X.shape[1]})")
             
-            # MNIST já vem pré-configurado como binário (0 vs 1)
             if nome_dataset == 'mnist':
                 return nome_dataset, class_names[0], X, y, class_names
                 
-            # Para outros datasets, selecionar classe alvo
             print("\nClasses disponíveis:")
             for i, nome in enumerate(class_names):
                 print(f"   [{i}] - {nome}")

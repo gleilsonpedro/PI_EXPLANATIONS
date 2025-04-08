@@ -68,46 +68,54 @@ Rejeitadas: {rejeitadas} ({rejeitadas/total:.1%})"""
     return plt
 
 def plot_analysis(X, y, contagem, nome_dataset, classe_0_nome, gamma_values, y_test):
-    plt.figure(figsize=(16, 8))  # Tamanho ajustado para 2 plots
-    sns.set(font_scale=1.0)
-    plt.rcParams['font.family'] = 'DejaVu Sans'
+    plt.figure(figsize=(20, 12))
+    gs = plt.GridSpec(2, 1, height_ratios=[1.5, 1])
     
-    # Layout otimizado para 2 plots lado a lado
-    gs = plt.GridSpec(1, 2, width_ratios=[1, 1.5], wspace=0.4)
+    # 1. Gráfico de importância de features
+    ax1 = plt.subplot(gs[0])
+    features_ordenadas = sorted(contagem.keys(), key=lambda x: contagem[x], reverse=True)
+    counts = [contagem[f] for f in features_ordenadas]
     
-    # 1. Gráfico de features (esquerda)
-    ax1 = plt.subplot(gs[0, 0])
-    features = [f.replace("sepel", "sepal").replace("pedal", "petal") 
-               for f in sorted(contagem.keys(), key=lambda x: contagem[x], reverse=True)]
-    counts = [contagem[f] for f in contagem.keys()]
+    bars = ax1.barh(features_ordenadas, counts, color='skyblue')
+    ax1.bar_label(bars, fmt='%d', padding=5, fontsize=10)
+    ax1.set_title('Frequência de Features nas Explicações', fontsize=14, pad=20)
+    ax1.set_xlabel('Número de Ocorrências', fontsize=12)
+    ax1.grid(axis='x', alpha=0.3)
     
-    bars = ax1.barh(features[:4], counts[:4], color=sns.color_palette("husl", 4))
-    ax1.bar_label(bars, fmt='%d', padding=3, fontsize=10)
-    ax1.set_title('Features Mais Relevantes', fontsize=12, pad=10, fontweight='bold')
-    ax1.set_xlabel('Número de Ocorrências', fontsize=10)
-    ax1.set_ylabel('')
-    ax1.grid(axis='x', alpha=0.2)
+    # 2. Boxplot de todas as features
+    ax2 = plt.subplot(gs[1])
+    df = X.copy()
     
-    # 2. Boxplot (direita)
-    ax2 = plt.subplot(gs[0, 1])
-    df = X.rename(columns=lambda x: x.replace("sepel", "sepal").replace("pedal", "petal")).copy()
-    df['Classe'] = pd.Series(y).map({0: classe_0_nome, 1: 'Outras'})
+    # Garantir que só temos colunas numéricas
+    df = df.select_dtypes(include=['number'])
     
-    sns.boxplot(data=df.melt(id_vars='Classe', value_vars=features[:4]), 
-               x='variable', y='value', hue='Classe',
-               palette={classe_0_nome: '#3498db', 'Outras': '#e74c3c'},
-               ax=ax2, linewidth=1.2, width=0.7)
+    # Normalização apenas das features numéricas
+    df_normalized = (df - df.mean()) / df.std()
+    df_normalized['Classe'] = pd.Series(y).map({0: classe_0_nome, 1: 'Outras Classes'})
     
-    ax2.set_title('Distribuição por Classe', fontsize=12, pad=10, fontweight='bold')
-    ax2.set_xlabel('')
-    ax2.set_ylabel('Valor (cm)', fontsize=10)
-    ax2.legend(title='Classe', bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=10)
-    ax2.tick_params(axis='x', rotation=30, labelsize=10)
-    ax2.grid(axis='y', alpha=0.2)
+    # Transformar para formato longo
+    df_melted = df_normalized.melt(id_vars='Classe')
     
-    plt.suptitle(f'Análise Explicativa: {nome_dataset.capitalize()} - Classe {classe_0_nome}', 
-                y=0.98, fontsize=14, fontweight='bold')
-    plt.tight_layout(pad=2.0)
+    # Plot
+    sns.boxplot(data=df_melted, 
+               x='variable', 
+               y='value', 
+               hue='Classe',
+               palette={classe_0_nome: 'green', 'Outras Classes': 'orange'},
+               ax=ax2, 
+               linewidth=1,
+               showfliers=False)
+    
+    ax2.set_title('Distribuição Normalizada das Features', fontsize=14, pad=20)
+    ax2.set_xlabel('Features', fontsize=12)
+    ax2.set_ylabel('Valor Normalizado', fontsize=12)
+    ax2.legend(title='Classe', bbox_to_anchor=(1.02, 1), loc='upper left')
+    ax2.tick_params(axis='x', rotation=45)
+    ax2.grid(axis='y', alpha=0.3)
+    
+    plt.suptitle(f'Análise Explicativa para {nome_dataset.capitalize()}\nClasse Alvo: {classe_0_nome}', 
+                fontsize=16, y=0.98)
+    plt.tight_layout()
     
     return plt
 
@@ -162,12 +170,12 @@ def main():
 
     # Plotar distribuição de gamma
     gamma_plot = plot_gamma_distribution(gamma_values, gamma_reject, nome_dataset, classe_0_nome)
-    gamma_plot.savefig(f'gamma_distribution_{nome_dataset}.png', dpi=300, bbox_inches='tight')
+    gamma_plot.savefig(f'plots/gamma_distribution_{nome_dataset}.png', dpi=300, bbox_inches='tight')
     gamma_plot.show()
 
     # Plotar análise composta
     analysis_plot = plot_analysis(X_df, y, contagem, nome_dataset, classe_0_nome, gamma_values, y_test)
-    analysis_plot.savefig(f'analysis_{nome_dataset}.png', dpi=300, bbox_inches='tight')
+    analysis_plot.savefig(f'plots/analysis_{nome_dataset}.png', dpi=300, bbox_inches='tight')
     analysis_plot.show()
 
     # Tempo total
