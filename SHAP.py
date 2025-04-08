@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
-from data.load_datasets import selecionar_dataset_e_classe
+from load_datasets import selecionar_dataset_e_classe
 import shap
 import sys
 import warnings
@@ -35,15 +35,20 @@ def main():
     explainer = shap.LinearExplainer(model, X_train)
     shap_values = explainer.shap_values(X_test)
     
+    # Corrigindo o formato dos valores esperados para classificação binária
+    if not isinstance(explainer.expected_value, list):
+        explainer.expected_value = [explainer.expected_value]
+    
     # 6. Plot de resumo global
     print("\nGerando visualizações SHAP...")
     plt.figure(figsize=(12, 6))
     shap.summary_plot(shap_values, X_test, plot_type="bar", show=False)
     plt.title(f"Features Mais Relevantes para '{classe_0_nome}'", fontsize=14)
     plt.tight_layout()
-    plt.savefig('shap_global_summary.png', dpi=300)
+    global_summary_file = f"shap_{nome_dataset}_global_summary.png"
+    plt.savefig(global_summary_file, dpi=300)
     plt.close()
-    print("-> Gráfico global salvo como 'shap_global_summary.png'")
+    print(f"-> Gráfico global salvo como '{global_summary_file}'")
     
     # 7. Análise por instância
     while True:
@@ -68,13 +73,15 @@ def main():
             explainer.expected_value[0], 
             shap_values[idx], 
             feature_names=feature_names,
-            show=False
+            show=False,
+            highlight=int(true_class)
         )
         plt.title(f"Contribuição das Features - Instância {idx}\nClasse Real: {class_names[true_class]}", fontsize=14)
         plt.tight_layout()
-        plt.savefig(f'shap_decision_{idx}.png', dpi=300)
+        decision_file = f"shap_{nome_dataset}_decision_{idx}.png"
+        plt.savefig(decision_file, dpi=300)
         plt.close()
-        print(f"-> Gráfico de decisão salvo como 'shap_decision_{idx}.png'")
+        print(f"-> Gráfico de decisão salvo como '{decision_file}'")
         
         # 9. Métricas e explicação textual
         print("\n" + "="*60)
