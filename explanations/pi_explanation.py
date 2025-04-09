@@ -19,7 +19,7 @@ def calcular_deltas(Vs, X, w, classe_verdadeira):
             delta = (Vs[feature] - extremo) * w[i]
         else:  # Classe não-alvo 
             extremo = X[feature].max() if w[i] < 0 else X[feature].min()
-            delta = (extremo - Vs[feature]) * w[i]
+            delta =  (Vs[feature] - extremo) * w[i]
         deltas.append(delta)
     return deltas
 
@@ -42,23 +42,18 @@ def one_explanation(Vs, delta, R, feature_names, classe_0_nome, classe_verdadeir
     delta_sorted = sorted(enumerate(delta), key=lambda x: abs(x[1]), reverse=True)
     
     # Calcular threshold para considerar features relevantes
-    threshold = 0.1 * abs(sum(delta))  # Considera features que contribuem com pelo menos 10% do total
+    #estranho tem que rever
+    ## threshold = 0.1 * abs(sum(delta))  # Considera features que contribuem com pelo menos 10% do total
     
     for feature_idx, delta_val in delta_sorted:
-        if abs(delta_val) < threshold:
-            continue  # Pula features com contribuição insignificante
-            
-        feature = feature_names[feature_idx]
-        Xpl.append(f"{feature} - {Vs[feature]:.1f} (Δ={delta_val:.2f})")
-        
-        if classe_verdadeira == 0:
+       # if abs(delta_val) < threshold:
+       #     continue  # Pula features com contribuição insignificante
+        if R >= 0:
+            feature = feature_names[feature_idx]
+            Xpl.append(f"{feature} = {Vs[feature]:.1f} (Δ={delta_val:.2f})")
             R -= delta_val
-            if R <= 0: 
-                break
         else:
-            R += delta_val
-            if R >= 0: 
-                break
+            break
     
     if not Xpl:  # Se nenhuma feature foi selecionada
         Xpl.append("Nenhuma feature significativa identificada")
@@ -121,7 +116,8 @@ def analisar_instancias(X_test, y_test, classe_0_nome, class_names, modelo, X, g
             explicacoes.append(msg)
             rejeicoes.append(idx)
             continue
-            
+
+        # estranho também    
         classe_verdadeira = y_test[idx]
         
         # 1. Cálculo dos deltas (Artigo Eq. 14)

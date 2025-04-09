@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
-from load_datasets import selecionar_dataset_e_classe
+from data.load_datasets import selecionar_dataset_e_classe
 import shap
 import sys
 import warnings
