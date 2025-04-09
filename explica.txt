@@ -1,3 +1,10 @@
-Explicação:
-    Se Gamma_A > 0 → Classe 1
-    Se Gamma_A ≤ 0 → Classe 0
+Explicação γ_A para a lógica da Pi_explanation:
+    Se γ_A > 0 → Classe 1
+    Se γ_A ≤ 0 → Classe 0
+
+Lógica Básica rejeiçao:
+    Para cada instância, calcula gamma_A (score de decisão)
+        Se abs(gamma_A) < gamma_reject → Instância é rejeitada
+        gamma_A > 0: "Quase classe 1"
+        gamma_A < 0: "Quase classe 0"
+        
