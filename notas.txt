@@ -61,6 +61,6 @@ Comparação da pi exp´licação com outras técnicas (SHAP e LIME)
     pegar tamanho de cada explicação e fazer a média das explicações , (padrão)
 
     explicação - comparar com ancors
-    opçcao de rejeição tem que ver pois o limiar tem qu esre encontradio
+    opçcao de rejeição tem que ver pois o limiar tem que ser encontrado
 
 

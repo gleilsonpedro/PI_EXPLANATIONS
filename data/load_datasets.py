@@ -116,27 +116,51 @@ def selecionar_dataset_e_classe():
                 
             print(f"Dataset carregado! (Amostras: {X.shape[0]}, Features: {X.shape[1]})")
             
-            if nome_dataset == 'mnist':
-                return nome_dataset, class_names[0], X, y, class_names
-                
+            # Mostrar classes disponíveis
             print("\nClasses disponíveis:")
             for i, nome in enumerate(class_names):
                 print(f"   [{i}] - {nome}")
-                
+            
+            # Selecionar classe 0
             while True:
-                escolha = input("\nDigite o número da classe que será a classe 0: ")
-                if escolha.isdigit() and 0 <= int(escolha) < len(class_names):
-                    classe_0_nome = class_names[int(escolha)]
-                    y_binario = np.where(y == int(escolha), 0, 1)
+                escolha_0 = input("\nDigite o número da classe que será a classe 0: ")
+                if escolha_0.isdigit() and 0 <= int(escolha_0) < len(class_names):
+                    classe_0_nome = class_names[int(escolha_0)]
                     break
                 else:
                     print("Número inválido!")
-                    
+            
+            # Selecionar classe 1 (se houver mais de 2 classes)
+            if len(class_names) > 2:
+                classes_restantes = [i for i in range(len(class_names)) if i != int(escolha_0)]
+                print("\nSelecione a classe 1:")
+                for i in classes_restantes:
+                    print(f"   [{i}] - {class_names[i]}")
+                
+                while True:
+                    escolha_1 = input("\nDigite o número da classe que será a classe 1: ")
+                    if escolha_1.isdigit() and int(escolha_1) in classes_restantes:
+                        classe_1_nome = class_names[int(escolha_1)]
+                        break
+                    else:
+                        print("Número inválido!")
+            else:
+                classe_1_nome = class_names[1 - int(escolha_0)]
+            
+            # Filtrar apenas as duas classes selecionadas
+            mask = (y == int(escolha_0)) | (y == int(escolha_1)) if len(class_names) > 2 else (y == 0) | (y == 1)
+            X = X[mask]
+            y = y[mask]
+            
+            # Converter para binário (0 e 1)
+            y_binario = np.where(y == int(escolha_0), 0, 1)
+            class_names_bin = [classe_0_nome, classe_1_nome]
+            
             print(f"\n🔹 Configuração binária:")
             print(f"   Classe 0: {classe_0_nome}")
-            print(f"   Classe 1: Outras classes\n")
+            print(f"   Classe 1: {classe_1_nome}\n")
             
-            return nome_dataset, classe_0_nome, X, y_binario, class_names
+            return nome_dataset, classe_0_nome, X, y_binario, class_names_bin
             
         else:
             print("Opção inválida. Tente novamente.")
