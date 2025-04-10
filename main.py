@@ -1,6 +1,6 @@
 from data.load_datasets import selecionar_dataset_e_classe  
 from models.train_model import treinar_modelo
-from explanations.pi_explanation import analisar_instancias, contar_features_relevantes
+from explanations.pi_explanation import analisar_instancias, contar_features_relevantes, calcular_estatisticas_explicacoes
 import time
 import os
 import warnings
@@ -54,6 +54,16 @@ def main():
     explicacoes = analisar_instancias(X_test_df, y_test, classe_0_nome, classe_1_nome, modelo, X_df)
     fim_pi = time.time()
     tempo_pi = fim_pi - inicio_pi
+
+    print(f"\nTotal de instâncias de teste: {len(y_test)}")
+    print(f"Distribuição das classes no teste: {pd.Series(y_test).value_counts()}")
+    print(f"Instâncias com explicações geradas: {len(explicacoes)}")
+
+    # Após gerar as explicações:
+    estatisticas = calcular_estatisticas_explicacoes(explicacoes)
+    print(f"\n**Estatísticas das Explicações:**")
+    print(f"Média de features por explicação: {estatisticas['media_tamanho']:.2f}")
+    print(f"Desvio padrão: {estatisticas['desvio_padrao_tamanho']:.2f}")
 
     # Contar features relevantes
     print("\n**Contagem de features relevantes:**")

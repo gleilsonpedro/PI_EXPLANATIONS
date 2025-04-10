@@ -64,3 +64,17 @@ Comparação da pi exp´licação com outras técnicas (SHAP e LIME)
     opçcao de rejeição tem que ver pois o limiar tem que ser encontrado
 
 
+    **********************************
+    estava errado o calculo do R que no caso é o ΦR
+        R = sum(delta) - gamma_A
+    no artigo equação 14 mostra:
+        phiR = gamma_A - Gamma_Omega ->  ΦR = Γa - Γω
+        "onde Gamma_omega é o pior caso da função de decisão e phi é o threshold inicial passado
+        pela função de decisão"
+
+        ENTENDENDO: A função subtrai cada δj (valor da feature ordenado) de ΦR até que ΦR ≤ 0
+        while ΦR ≥ 0:
+            ΦR = ΦR - ∆[Idx]
+            Xpl.add(feature_j)
+
+

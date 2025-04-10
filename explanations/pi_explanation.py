@@ -110,6 +110,37 @@ def analisar_instancias(X_test, y_test, classe_0_nome, classe_1_nome, modelo, X)
 
     return explicacoes
 
+def calcular_estatisticas_explicacoes(explicacoes):
+    """
+    Calcula estatísticas sobre o tamanho das explicações
+    
+    Args:
+        explicacoes: Lista de todas as explicações geradas
+    
+    Returns:
+        Dicionário com média e desvio padrão do número de features por explicação
+    """
+    tamanhos = []
+    
+    for exp in explicacoes:
+        # Conta quantas features tem na explicação
+        if "Nenhuma feature" in exp:
+            tamanhos.append(0)
+        else:
+            # Divide a explicação pelos separadores para contar as features
+            partes = exp.split(": ")[1] if ": " in exp else ""
+            num_features = len(partes.split(", ")) if partes else 0
+            tamanhos.append(num_features)
+    
+    media = np.mean(tamanhos)
+    desvio_padrao = np.std(tamanhos)
+    
+    return {
+        'media_tamanho': media,
+        'desvio_padrao_tamanho': desvio_padrao,
+        'tamanhos': tamanhos
+    }
+
 def contar_features_relevantes(explicacoes, classe_0_nome, classe_1_nome):
     """
     Conta features relevantes para ambas as classes
