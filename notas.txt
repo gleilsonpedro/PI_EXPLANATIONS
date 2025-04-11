@@ -77,4 +77,35 @@ Comparação da pi exp´licação com outras técnicas (SHAP e LIME)
             ΦR = ΦR - ∆[Idx]
             Xpl.add(feature_j)
 
+        * o R mede a "folga" entre a instância atual (gamma_A) e o pior caso.
+        * Critério de Parada: Quando Phi ≤ 0, as features já incluídas são suficientes para justificar a predição, mesmo que as demais features assumam seus piores valores.
 
+            
+*********************
+sobre a regressão loghistica foi modificado:
+- a função de decisão foi alterada para a função de decisão da regressão logA regularização padrão (com C=1.0) pode gerar pesos pequenos → gamma_A e delta pequenos → R ≈ 0 ou negativo.
+
+Com C=10.0, o modelo tem mais liberdade para atribuir pesos maiores às features realmente importantes.
+
+Isso vai aumentar os valores de gamma_A - gamma_omega = R, facilitando que o one_explanation() consiga encontrar uma explicação antes de esgotar a lista de features.
+
+**********************
+
+o gamma_A os calculos dele e do gamma_omega estão sendo  calculados com base na predição do modelo e não no rótulo verdadeiro como fala no artigo onde :
+
+	gamma_A = modelo.decision_function([instancia])[0]
+    gamma_omega = calcular_gamma_omega(modelo, X, y, y_test[idx])
+
+    deve ficar assim:
+
+        gamma_A = modelo.decision_function([instancia])[0]
+        classe_predita = int(modelo.predict([instancia])[0])
+        gamma_omega = calcular_gamma_omega(modelo, X, y, classe_predita)
+
+        e a chamada no main fica : 
+
+        explicacao = one_explanation(Vs, delta, R, feature_names, classe_0_nome, classe_1_nome, classe_predita)
+
+        O ARTIGO - "We generate explanations with respect to the predicted class, not necessarily the true label"
+
+        A PI-explicação mostra por que o modelo decidiu o que decidiu, não se ele estava certo ou não.

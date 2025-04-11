@@ -10,7 +10,10 @@ def treinar_modelo(X, y):
     # Manter como DataFrame durante toda a operação
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42    )
     
-    modelo = LogisticRegression(max_iter=200)
+    modelo = LogisticRegression(C=10.0, max_iter=200, solver="liblinear")
+    # C=10.0 → menos regularização (aumenta os coeficientes/pesos)
+    # solver="liblinear" → bom para conjuntos de dados pequenos e binários
+
     modelo.fit(X_train, y_train)
     
     return modelo, X_test, y_test

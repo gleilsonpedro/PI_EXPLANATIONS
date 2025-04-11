@@ -51,7 +51,7 @@ def main():
 
     # Calcular PI-explicações
     inicio_pi = time.time()
-    explicacoes = analisar_instancias(X_test_df, y_test, classe_0_nome, classe_1_nome, modelo, X_df)
+    explicacoes = analisar_instancias(X_test_df, y_test, classe_0_nome, classe_1_nome, modelo, X_df, y)
     fim_pi = time.time()
     tempo_pi = fim_pi - inicio_pi
 
