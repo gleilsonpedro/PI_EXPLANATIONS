@@ -30,18 +30,13 @@ def main():
     print(f"Total de amostras: {X.shape[0]}")
     print(f"Número de atributos: {X.shape[1]}\n")
 
-    # Treinar modelo
-    inicio_treinamento = time.time()
-    
     # Converter X para DataFrame com nomes consistentes
     feature_names = getattr(X, 'columns', [f"feature_{i}" for i in range(X.shape[1])])
     X_df = pd.DataFrame(X, columns=feature_names)
     
     # Treinar modelo
+    inicio_treinamento = time.time()
     modelo, X_test, y_test = treinar_modelo(X_df, y)
-    
-    # Converter X_test para DataFrame
-    X_test_df = pd.DataFrame(X_test, columns=feature_names)
     fim_treinamento = time.time()
     tempo_treinamento = fim_treinamento - inicio_treinamento
 
@@ -49,32 +44,34 @@ def main():
     for name, coef in zip(feature_names, modelo.coef_[0]):
         print(f"{name}: {coef:.4f}")
 
-    # Calcular PI-explicações
+    # --- PREPARAÇÃO DOS DADOS PARA EXPLICAÇÃO ---
+    # Converter X_test para DataFrame
+    X_test_df = pd.DataFrame(X_test, columns=feature_names)
+    
+    # Garantir que y_test seja numpy array
+    if isinstance(y_test, pd.Series):
+        y_test = y_test.values
+
+    # --- GERAR EXPLICAÇÕES ---
     inicio_pi = time.time()
-    explicacoes = analisar_instancias(X_test_df, y_test, classe_0_nome, classe_1_nome, modelo, X_df, y)
+    explicacoes, contagem = analisar_instancias(X_test_df, y_test, classe_0_nome, classe_1_nome, modelo, X_df)
     fim_pi = time.time()
     tempo_pi = fim_pi - inicio_pi
 
+    # --- ESTATÍSTICAS ---
     print(f"\nTotal de instâncias de teste: {len(y_test)}")
     print(f"Distribuição das classes no teste: {pd.Series(y_test).value_counts()}")
     print(f"Instâncias com explicações geradas: {len(explicacoes)}")
 
-    # Após gerar as explicações:
-    estatisticas = calcular_estatisticas_explicacoes(explicacoes)
-    print(f"\n**Estatísticas das Explicações:**")
-    print(f"Média de features por explicação: {estatisticas['media_tamanho']:.2f}")
-    print(f"Desvio padrão: {estatisticas['desvio_padrao_tamanho']:.2f}")
+    print("\n**Features mais relevantes:**")
+    for classe, features in contagem.items():
+        print(f"\nPara '{classe_0_nome if '0' in classe else classe_1_nome}':")
+        for f, cnt in sorted(features.items(), key=lambda x: -x[1]):
+            print(f"  {f}: {cnt} ocorrências")
 
-    # Contar features relevantes
-    print("\n**Contagem de features relevantes:**")
-    contagem = contar_features_relevantes(explicacoes, classe_0_nome, classe_1_nome)
-
-    # Tempo total
-    tempo_total = tempo_treinamento + tempo_pi
-
-    print(f"\n**Tempo de treinamento do modelo:**      {tempo_treinamento:.4f} segundos")
-    print(f"**Tempo de cálculo das PI-explicações:** {tempo_pi:.4f} segundos")
-    print(f"**Tempo total de execução:**             {tempo_total:.4f} segundos")
+    # --- TEMPOS (OPCIONAL - PODE REMOVER) ---
+    print(f"\n**Tempo de treinamento:** {tempo_treinamento:.4f}s")
+    print(f"**Tempo das explicações:** {tempo_pi:.4f}s")
 
 if __name__ == "__main__":
     main()

@@ -1,9 +1,13 @@
 import numpy as np
 import pandas as pd
 
-def calcular_gamma_omega(modelo, X, y, classe_predita):
+def calcular_gamma_omega(modelo, X, classe_predita):
     """
-    Calcula gamma_omega para a classe predita conforme o artigo NeurIPS20.
+    Calcula gamma_omega (pior caso) conforme artigo NeurIPS20
+    Args:
+        modelo: Modelo de regressão logística treinado
+        X: DataFrame com os dados de treino
+        classe_predita: Classe predita (0 ou 1)
     """
     coef = modelo.coef_[0]
     intercept = modelo.intercept_[0]
@@ -14,137 +18,112 @@ def calcular_gamma_omega(modelo, X, y, classe_predita):
         min_val = X[col].min()
         max_val = X[col].max()
         
-        # Para classe 1, queremos o pior caso que faria a predição mudar para 0
         if classe_predita == 1:
+            # Para classe 1, pior caso é quando features diminuem a predição
             contrib = w_i * (min_val if w_i > 0 else max_val)
-        # Para classe 0, queremos o pior caso que faria a predição mudar para 1
         else:
+            # Para classe 0, pior caso é quando features aumentam a predição
             contrib = w_i * (max_val if w_i > 0 else min_val)
             
         gamma += contrib
     
     return gamma
 
-def calcular_deltas(modelo, X, Vs, classe_predita):
+def calcular_deltas(modelo, X, instancia, classe_predita):
     """
-    Calcula os deltas conforme definido no artigo NeurIPS20.
-    Delta é a diferença entre o valor atual e o pior caso possível.
+    Calcula deltas (diferença entre valor atual e pior caso)
+    Args:
+        modelo: Modelo treinado
+        X: DataFrame com dados de treino
+        instancia: Dicionário com valores da instância a explicar
+        classe_predita: Classe predita (0 ou 1)
     """
     coef = modelo.coef_[0]
-    delta = []
+    deltas = []
     
-    for i, feature in enumerate(X.columns):
-        w_i = coef[i]
-        x_i = Vs[feature]
+    for feature in X.columns:
+        w_i = coef[X.columns.get_loc(feature)]
+        x_i = instancia[feature]
         min_val = X[feature].min()
         max_val = X[feature].max()
         
-        # Valor atual
         valor_atual = w_i * x_i
         
-        # Pior caso possível
         if classe_predita == 1:
             pior_caso = w_i * (min_val if w_i > 0 else max_val)
         else:
             pior_caso = w_i * (max_val if w_i > 0 else min_val)
             
-        # Delta é a diferença entre valor atual e pior caso
-        delta_val = valor_atual - pior_caso
-        delta.append((feature, delta_val))
+        delta = valor_atual - pior_caso
+        deltas.append((feature, delta))
     
-    # Ordenar por magnitude descendente
-    delta.sort(key=lambda x: -abs(x[1]))
-    return delta
+    # Ordena por magnitude absoluta descendente
+    deltas.sort(key=lambda x: -abs(x[1]))
+    return deltas
 
-def one_explanation(Vs, delta, R, feature_names, classe_0_nome, classe_1_nome, classe_predita):
+def one_explanation(Vs, delta, R, classe_nomes, classe_predita):
     """
-    Gera uma PI-explicação mínima conforme o algoritmo do artigo NeurIPS20.
+    Gera explicação PI mínima conforme artigo NeurIPS20
+    Retorna: (explicação_str, features_usadas)
     """
     Xpl = []
-    i = 0
     R_restante = R
     
-    # Para classe 1, queremos R > 0
-    # Para classe 0, queremos R <= 0
-    while (classe_predita == 1 and R_restante > 0) or (classe_predita == 0 and R_restante <= 0):
-        if i >= len(delta):
+    for feature, delta_val in delta:
+        # Critério de parada do artigo:
+        # Classe 1: parar quando R_restante <= 0
+        # Classe 0: parar quando R_restante > 0
+        if (classe_predita == 1 and R_restante <= 0) or (classe_predita == 0 and R_restante > 0):
             break
             
-        feature, delta_val = delta[i]
-        R_restante -= delta_val
         Xpl.append((feature, Vs[feature], delta_val))
-        i += 1
+        R_restante -= delta_val
     
     if not Xpl:
-        return f"PI-Explicação - {classe_1_nome if classe_predita == 1 else classe_0_nome}: Nenhuma feature significativa identificada"
+        return (f"PI-Explicação - {classe_nomes[classe_predita]}: Predição baseada no caso geral", [])
     
-    explic_str = ", ".join(
-        f"{f} = {v:.3f} (Δ={d:.3f})" for f, v, d in Xpl
-    )
-    return f"PI-Explicação - {classe_1_nome if classe_predita == 1 else classe_0_nome}: {explic_str}"
+    explic_str = ", ".join(f"{f} = {v:.3f}" for f, v, _ in Xpl)
+    features_usadas = [f for f, _, _ in Xpl]
+    
+    return (f"PI-Explicação - {classe_nomes[classe_predita]}: {explic_str}", features_usadas)
 
-def analisar_instancias(X_test, y_test, classe_0_nome, classe_1_nome, modelo, X, y):
+def analisar_instancias(X_test, y_test, classe_0_nome, classe_1_nome, modelo, X):
     """
-    Analisa todas as instâncias e gera PI-explicações conforme o artigo NeurIPS20.
+    Versão robusta que funciona com DataFrames ou arrays NumPy
     """
+    # Convertendo para DataFrame se necessário
     if not isinstance(X_test, pd.DataFrame):
-        feature_names = X.columns if hasattr(X, 'columns') else [f"feature_{i}" for i in range(X.shape[1])]
-        X_test = pd.DataFrame(X_test, columns=feature_names)
+        X_test = pd.DataFrame(X_test, columns=X.columns if hasattr(X, 'columns') else None)
     
-    if not isinstance(X, pd.DataFrame):
-        X = pd.DataFrame(X, columns=X_test.columns)
+    if isinstance(y_test, pd.Series):
+        y_test = y_test.values
     
-    feature_names = X_test.columns.tolist()
+    classe_nomes = {0: classe_0_nome, 1: classe_1_nome}
     explicacoes = []
-
-    for idx in range(len(X_test)):
-        instancia_df = X_test.iloc[idx]
-        instancia = instancia_df.values
-        Vs_dict = instancia_df.to_dict()
-
-        gamma_A = modelo.decision_function([instancia])[0]
-        classe_predita = int(modelo.predict([instancia])[0])
-        gamma_omega = calcular_gamma_omega(modelo, X, y, classe_predita)
+    contagem_features = {'Classe 0': {}, 'Classe 1': {}}
+    
+    for idx, (_, instancia) in enumerate(X_test.iterrows()):
+        Vs = instancia.to_dict()
+        gamma_A = modelo.decision_function([instancia.values])[0]
+        classe_predita = int(modelo.predict([instancia.values])[0])
+        gamma_omega = calcular_gamma_omega(modelo, X, classe_predita)
         R = gamma_A - gamma_omega
-
-        # Aqui está a correção!
-        delta = calcular_deltas(modelo, X, Vs_dict, classe_predita)
-
-        explicacao = one_explanation(Vs_dict, delta, R, feature_names, classe_0_nome, classe_1_nome, classe_predita)
-
-        print("\n[DEBUG FINAL ANTES DA EXPLICAÇÃO]")
-        print(f"Classe predita: {classe_predita}")
-        print(f"Gamma_A: {gamma_A:.4f}")
-        print(f"Gamma_omega: {gamma_omega:.4f}")
-        print(f"R (gamma_A - gamma_omega): {R:.4f}")
-        print("Delta (valores ordenados):")
-        print(sorted([(feature, round(delta_val, 4)) for feature, delta_val in delta], key=lambda x: -abs(x[1])))
+        delta = calcular_deltas(modelo, X, Vs, classe_predita)
         
-
+        explicacao, features = one_explanation(Vs, delta, R, classe_nomes, classe_predita)
         explicacoes.append(explicacao)
-
-        # Prints para debug e validação
-        print(f"\nInstância {idx} (Classe real: {y_test[idx]}):")
-        print(f"  Gamma_A: {gamma_A:.4f}, Gamma_omega: {gamma_omega:.4f}, R: {R:.4f}")
+        
+        # Atualiza contagem de features
+        for f in features:
+            contagem_features[f'Classe {classe_predita}'][f] = contagem_features[f'Classe {classe_predita}'].get(f, 0) + 1
+        
+        # Saída formatada
+        classe_real = y_test[idx]
+        print(f"\nInstância {idx} (Classe real: {classe_nomes.get(classe_real, classe_real)}):")
         print(f"  {explicacao}")
-
-        if classe_predita == 1:
-            print(f"[Predição: Classe 1] Instância {idx} | γ_A: {gamma_A:.4f} | γ_ω: {gamma_omega:.4f} | R: {R:.4f}")
-            print(f"[DEBUG EXPLICAÇÃO] Classe predita: {classe_predita}")
-            print(f"[DEBUG EXPLICAÇÃO] R inicial = {R:.4f}")
-            print(f"[DEBUG EXPLICAÇÃO] Início do laço de explicação...")
-
-
-        print(f"[Debug] Verificando gamma_omega para classe {classe_predita}:")
-
-        for i, col in enumerate(X.columns):
-            w_i = modelo.coef_[0][i]
-            min_val = X[col].min()
-            max_val = X[col].max()
-            contrib = w_i * (max_val if w_i > 0 else min_val)
-            print(f"{col}: w = {w_i:.4f}, contribuição = {contrib:.4f}")
-
-    return explicacoes
+        print(f"  Features usadas: {', '.join(features) if features else 'Nenhuma'}")
+    
+    return explicacoes, contagem_features
 
 
 def calcular_estatisticas_explicacoes(explicacoes):
