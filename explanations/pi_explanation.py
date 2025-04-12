@@ -18,12 +18,11 @@ def calcular_gamma_omega(modelo, X, classe_predita):
         min_val = X[col].min()
         max_val = X[col].max()
         
-        if classe_predita == 1:
-            # Para classe 1, pior caso é quando features diminuem a predição
-            contrib = w_i * (min_val if w_i > 0 else max_val)
+        if w_i > 0:
+            contrib = w_i * X[col].min()
         else:
-            # Para classe 0, pior caso é quando features aumentam a predição
-            contrib = w_i * (max_val if w_i > 0 else min_val)
+            contrib = w_i * X[col].max()
+
             
         gamma += contrib
     
@@ -64,28 +63,31 @@ def calcular_deltas(modelo, X, instancia, classe_predita):
 def one_explanation(Vs, delta, R, classe_nomes, classe_predita):
     """
     Gera explicação PI mínima conforme artigo NeurIPS20
-    Retorna: (explicação_str, features_usadas)
+    Retorna: (explicacao_str, features_usadas)
     """
     Xpl = []
-    R_restante = R
-    
+    R_restante = float(R)  # Garante escalar
+
+    print(f"\n>> [DEBUG] Classe: {classe_nomes[classe_predita]} | R inicial: {R_restante:.4f}")
+
     for feature, delta_val in delta:
-        # Critério de parada do artigo:
-        # Classe 1: parar quando R_restante <= 0
-        # Classe 0: parar quando R_restante > 0
+        # Verifica se já pode parar
         if (classe_predita == 1 and R_restante <= 0) or (classe_predita == 0 and R_restante > 0):
+            print(f"[DEBUG] Parou após {len(Xpl)} features — R_restante: {R_restante:.4f}")
             break
-            
+
         Xpl.append((feature, Vs[feature], delta_val))
         R_restante -= delta_val
-    
+        print(f"  [DEBUG] Adicionou: {feature}, delta={delta_val:.4f}, R_restante={R_restante:.4f}")
+
     if not Xpl:
         return (f"PI-Explicação - {classe_nomes[classe_predita]}: Predição baseada no caso geral", [])
-    
+
     explic_str = ", ".join(f"{f} = {v:.3f}" for f, v, _ in Xpl)
     features_usadas = [f for f, _, _ in Xpl]
-    
+
     return (f"PI-Explicação - {classe_nomes[classe_predita]}: {explic_str}", features_usadas)
+
 
 def analisar_instancias(X_test, y_test, classe_0_nome, classe_1_nome, modelo, X):
     """
@@ -109,6 +111,14 @@ def analisar_instancias(X_test, y_test, classe_0_nome, classe_1_nome, modelo, X)
         gamma_omega = calcular_gamma_omega(modelo, X, classe_predita)
         R = gamma_A - gamma_omega
         delta = calcular_deltas(modelo, X, Vs, classe_predita)
+        
+        print(f"\nInstância {idx} - Classe predita: {classe_nomes[classe_predita]}")
+        print(f"R = {R:.4f}")
+        print("Deltas:")
+        for f, d in delta:
+            print(f"  {f}: {d:.4f}")
+
+        
         
         explicacao, features = one_explanation(Vs, delta, R, classe_nomes, classe_predita)
         explicacoes.append(explicacao)

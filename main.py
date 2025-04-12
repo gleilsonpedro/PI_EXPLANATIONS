@@ -35,10 +35,8 @@ def main():
     X_df = pd.DataFrame(X, columns=feature_names)
     
     # Treinar modelo
-    inicio_treinamento = time.time()
     modelo, X_test, y_test = treinar_modelo(X_df, y)
-    fim_treinamento = time.time()
-    tempo_treinamento = fim_treinamento - inicio_treinamento
+    
 
     print("\nCoeficientes do modelo:")
     for name, coef in zip(feature_names, modelo.coef_[0]):
@@ -53,10 +51,13 @@ def main():
         y_test = y_test.values
 
     # --- GERAR EXPLICAÇÕES ---
-    inicio_pi = time.time()
     explicacoes, contagem = analisar_instancias(X_test_df, y_test, classe_0_nome, classe_1_nome, modelo, X_df)
-    fim_pi = time.time()
-    tempo_pi = fim_pi - inicio_pi
+    # Estatísticas das explicações
+    estatisticas = calcular_estatisticas_explicacoes(explicacoes)
+
+    print("\n Estatísticas das explicações:")
+    print(f"- Média de features por explicação: {estatisticas['media_tamanho']:.2f}")
+    print(f"- Desvio padrão: {estatisticas['desvio_padrao_tamanho']:.2f}")
 
     # --- ESTATÍSTICAS ---
     print(f"\nTotal de instâncias de teste: {len(y_test)}")
@@ -69,9 +70,6 @@ def main():
         for f, cnt in sorted(features.items(), key=lambda x: -x[1]):
             print(f"  {f}: {cnt} ocorrências")
 
-    # --- TEMPOS (OPCIONAL - PODE REMOVER) ---
-    print(f"\n**Tempo de treinamento:** {tempo_treinamento:.4f}s")
-    print(f"**Tempo das explicações:** {tempo_pi:.4f}s")
 
 if __name__ == "__main__":
     main()

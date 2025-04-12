@@ -109,3 +109,13 @@ o gamma_A os calculos dele e do gamma_omega estão sendo  calculados com base na
         O ARTIGO - "We generate explanations with respect to the predicted class, not necessarily the true label"
 
         A PI-explicação mostra por que o modelo decidiu o que decidiu, não se ele estava certo ou não.
+
+###### o que quero printar:
+    Dataset e classes analisadas
+    Acurácia
+    Instância + classe predita
+    Nº de features usadas
+    PI-explicação
+    Estatísticas (média, desvio)
+    Distribuição das classes
+    Features mais frequentes
