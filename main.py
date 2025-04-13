@@ -5,6 +5,7 @@ import time
 import os
 import warnings
 import pandas as pd
+import numpy as np
 
 warnings.filterwarnings("ignore")
 
@@ -60,9 +61,12 @@ def main():
     print(f"- Desvio padrão: {estatisticas['desvio_padrao_tamanho']:.2f}")
 
     # --- ESTATÍSTICAS ---
+    print(f"Distribuição das classes no teste:")
     print(f"\nTotal de instâncias de teste: {len(y_test)}")
-    print(f"Distribuição das classes no teste: {pd.Series(y_test).value_counts()}")
-    print(f"Instâncias com explicações geradas: {len(explicacoes)}")
+    valores, contagens = np.unique(y_test, return_counts=True)
+    for i, c in zip(valores, contagens):
+        nome = class_names[i]
+        print(f"  {nome} (Classe {i}): {c} instâncias")
 
     print("\n**Features mais relevantes:**")
     for classe, features in contagem.items():

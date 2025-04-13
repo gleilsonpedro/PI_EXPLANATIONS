@@ -48,7 +48,7 @@ def one_explanation(Vs, delta, R, classe_nomes, classe_predita):
     Xpl = []
     R_restante = float(R)  # Garante escalar
 
-    print(f"\n>> [DEBUG] Classe: {classe_nomes[classe_predita]} | R inicial: {R_restante:.4f}")
+    #print(f"\n>> [DEBUG] Classe: {classe_nomes[classe_predita]} | R inicial: {R_restante:.4f}")
 
     for feature, delta_val in delta:
         # Verifica se já pode parar
@@ -59,7 +59,7 @@ def one_explanation(Vs, delta, R, classe_nomes, classe_predita):
 
         Xpl.append((feature, Vs[feature], delta_val))
         R_restante -= delta_val
-        print(f"  [DEBUG] Adicionou: {feature}, delta={delta_val:.4f}, R_restante={R_restante:.4f}")
+        #print(f"  [DEBUG] Adicionou: {feature}, delta={delta_val:.4f}, R_restante={R_restante:.4f}")
 
     if not Xpl:
         return (f"PI-Explicação - {classe_nomes[classe_predita]}: Predição baseada no caso geral", [])
@@ -93,11 +93,11 @@ def analisar_instancias(X_test, y_test, classe_0_nome, classe_1_nome, modelo, X)
         R = gamma_A - gamma_omega
         delta = calcular_deltas(modelo, X, Vs, classe_predita)
         
-        print(f"\nInstância {idx} - Classe predita: {classe_nomes[classe_predita]}")
-        print(f"R = {R:.4f}")
-        print("Deltas:")
-        for f, d in delta:
-            print(f"  {f}: {d:.4f}")
+        #print(f"\nInstância {idx} - Classe predita: {classe_nomes[classe_predita]}")
+        #print(f"R = {R:.4f}")
+        #print("Deltas:")
+        #for f, d in delta:
+            #print(f"  {f}: {d:.4f}")
 
         
         
@@ -110,9 +110,11 @@ def analisar_instancias(X_test, y_test, classe_0_nome, classe_1_nome, modelo, X)
         
         # Saída formatada
         classe_real = y_test[idx]
-        print(f"\nInstância {idx} (Classe real: {classe_nomes.get(classe_real, classe_real)}):")
+        print(f"\nInstância {idx} | Real: {classe_nomes.get(classe_real)} | Predita: {classe_nomes[classe_predita]}")
         print(f"  {explicacao}")
-        print(f"  Features usadas: {', '.join(features) if features else 'Nenhuma'}")
+        print(f"  Features usadas ({len(features)}): {', '.join(features) if features else 'Nenhuma'}")
+
+
     
     return explicacoes, contagem_features
 
