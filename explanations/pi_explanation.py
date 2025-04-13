@@ -3,62 +3,42 @@ import pandas as pd
 
 def calcular_gamma_omega(modelo, X, classe_predita):
     """
-    Calcula gamma_omega (pior caso) conforme artigo NeurIPS20
-    Args:
-        modelo: Modelo de regressão logística treinado
-        X: DataFrame com os dados de treino
-        classe_predita: Classe predita (0 ou 1)
+    Calcula γ_ω — o valor mínimo possível de γ (score linear) para mudar a predição.
     """
     coef = modelo.coef_[0]
     intercept = modelo.intercept_[0]
     
-    gamma = intercept
+    gamma_omega = intercept
     for i, col in enumerate(X.columns):
         w_i = coef[i]
         min_val = X[col].min()
         max_val = X[col].max()
-        
-        if w_i > 0:
-            contrib = w_i * X[col].min()
-        else:
-            contrib = w_i * X[col].max()
 
-            
-        gamma += contrib
-    
-    return gamma
+        # Sempre tentar reduzir a influência da feature (pior caso)
+        contrib = w_i * (min_val if w_i > 0 else max_val)
+        gamma_omega += contrib
+
+    return gamma_omega
+
 
 def calcular_deltas(modelo, X, instancia, classe_predita):
-    """
-    Calcula deltas (diferença entre valor atual e pior caso)
-    Args:
-        modelo: Modelo treinado
-        X: DataFrame com dados de treino
-        instancia: Dicionário com valores da instância a explicar
-        classe_predita: Classe predita (0 ou 1)
-    """
     coef = modelo.coef_[0]
     deltas = []
-    
+
     for feature in X.columns:
         w_i = coef[X.columns.get_loc(feature)]
         x_i = instancia[feature]
         min_val = X[feature].min()
         max_val = X[feature].max()
-        
+
         valor_atual = w_i * x_i
-        
-        if classe_predita == 1:
-            pior_caso = w_i * (min_val if w_i > 0 else max_val)
-        else:
-            pior_caso = w_i * (max_val if w_i > 0 else min_val)
-            
+        pior_caso = w_i * (min_val if w_i > 0 else max_val)
         delta = valor_atual - pior_caso
         deltas.append((feature, delta))
-    
-    # Ordena por magnitude absoluta descendente
+
     deltas.sort(key=lambda x: -abs(x[1]))
     return deltas
+
 
 def one_explanation(Vs, delta, R, classe_nomes, classe_predita):
     """
@@ -72,9 +52,10 @@ def one_explanation(Vs, delta, R, classe_nomes, classe_predita):
 
     for feature, delta_val in delta:
         # Verifica se já pode parar
-        if (classe_predita == 1 and R_restante <= 0) or (classe_predita == 0 and R_restante > 0):
-            print(f"[DEBUG] Parou após {len(Xpl)} features — R_restante: {R_restante:.4f}")
+        # correto:
+        if R_restante <= 0:
             break
+        
 
         Xpl.append((feature, Vs[feature], delta_val))
         R_restante -= delta_val
