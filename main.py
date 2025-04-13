@@ -75,5 +75,25 @@ def main():
             print(f"  {f}: {cnt} ocorrências")
 
 
+    import joblib
+
+    # Empacotar as features realmente usadas por instância
+    # (Você já tem a lista `explicacoes` → vamos extrair as features dela)
+    features_usadas_lista = []
+    for exp in explicacoes:
+        if "Nenhuma" in exp:
+            features_usadas_lista.append([])
+        else:
+            partes = exp.split(": ")[1] if ": " in exp else ""
+            features = [f.split(" = ")[0].strip() for f in partes.split(", ")]
+            features_usadas_lista.append(features)
+
+    # Salvar tudo para uso posterior no teste de robustez
+    joblib.dump((modelo, X_test_df, explicacoes, features_usadas_lista, X_df, y_test, class_names), 'artefatos_para_teste_pi.pkl')
+
+    #joblib.dump((modelo, X_test_df, explicacoes, features_usadas_lista, X_df), 'artefatos_para_teste_pi.pkl')
+    print("\n✅ Artefatos salvos em 'artefatos_para_teste_pi.pkl' para validação posterior das PI-explicações.")
+
+
 if __name__ == "__main__":
     main()
