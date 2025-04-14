@@ -92,7 +92,7 @@ def main():
     joblib.dump((modelo, X_test_df, explicacoes, features_usadas_lista, X_df, y_test, class_names), 'artefatos_para_teste_pi.pkl')
 
     #joblib.dump((modelo, X_test_df, explicacoes, features_usadas_lista, X_df), 'artefatos_para_teste_pi.pkl')
-    print("\n✅ Artefatos salvos em 'artefatos_para_teste_pi.pkl' para validação posterior das PI-explicações.")
+    print("\n Dados salvos em 'artefatos_para_teste_pi.pkl' para validação das PI-explicações.")
 
 
 if __name__ == "__main__":

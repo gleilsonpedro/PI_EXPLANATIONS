@@ -53,6 +53,36 @@ def carregar_dataset(nome_dataset, reduzir_mnist=True, tamanho_mnist=1000):
                 )
             X = pd.DataFrame(X)
             class_names = ['Dígito 0', 'Dígito 1']
+        
+        elif nome_dataset == 'banknote':
+            url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00267/data_banknote_authentication.txt"
+            col_names = ["variance", "skewness", "curtosis", "entropy", "target"]
+            data = pd.read_csv(url, names=col_names)
+            X = data.drop("target", axis=1)
+            y = data["target"]
+            class_names = ["Authentic", "Forged"]
+
+        elif nome_dataset == 'heart_disease':
+            url = "https://archive.ics.uci.edu/ml/machine-learning-databases/heart-disease/processed.cleveland.data"
+            col_names = ["age", "sex", "cp", "trestbps", "chol", "fbs", "restecg",
+                         "thalach", "exang", "oldpeak", "slope", "ca", "thal", "target"]
+            data = pd.read_csv(url, names=col_names, na_values="?")
+            data.dropna(inplace=True)
+            data["target"] = data["target"].astype(int)
+            data["target"] = data["target"].apply(lambda x: 1 if x > 0 else 0)
+            X = data.drop("target", axis=1).astype(float)
+            y = data["target"]
+            class_names = ["No Disease", "Disease"]
+
+
+        elif nome_dataset == 'wine_quality':
+            url = "https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv"
+            data = pd.read_csv(url, sep=";")
+            data["target"] = data["quality"].apply(lambda x: 1 if x >= 7 else 0)
+            X = data.drop(["quality", "target"], axis=1)
+            y = data["target"]
+            class_names = ["Low Quality", "High Quality"]
+
             
         elif nome_dataset == 'creditcard':
             data = fetch_openml('creditcard', version=1, as_frame=True)
@@ -82,15 +112,20 @@ def selecionar_dataset_e_classe():
     | **************** MENU DE DATASETS CONFIÁVEIS **************** |
     | [0] Iris (150×4×3)             | [1] Pima Diabetes (768×8×2)  |
     | [2] Breast Cancer (569×30×2)   | [3] MNIST - Dígitos 0/1      |
-    | [4] Creditcard Fraud (284×30×2)| [Q] SAIR                     |
+    | [4] Creditcard Fraud (284×30×2)| [5] Banknote Authentication  |
+    | [6] Heart Disease              | [7] Wine Quality (Red)       |
+    | [Q] SAIR                                                   |
+
     |---------------------------------------------------------------|
     '''
     print(menu)
 
     nomes_datasets = [
         'iris', 'pima_indians_diabetes', 'breast_cancer',
-        'mnist', 'creditcard'
+        'mnist', 'creditcard',
+        'banknote', 'heart_disease', 'wine_quality'
     ]
+
 
     while True:
         opcao = input("\nDigite o número do dataset ou 'Q' para sair: ").upper().strip()
