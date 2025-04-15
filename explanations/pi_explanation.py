@@ -40,13 +40,32 @@ def calcular_deltas(modelo, X, instancia, classe_predita):
     return deltas
 
 
-def one_explanation(Vs, delta, R, classe_nomes, classe_predita):
+def one_explanation(Vs, delta, R, classe_nomes, classe_predita, top_n=None):
     """
     Gera explicação PI mínima conforme artigo NeurIPS20
     Retorna: (explicacao_str, features_usadas)
     """
     Xpl = []
     R_restante = float(R)  # Garante escalar
+
+    # Aplicar top-N se especificado
+    if top_n is not None:
+        delta = delta[:top_n]
+    
+    for feature, delta_val in delta:
+        if R_restante <= 0:
+            break
+            
+        Xpl.append((feature, Vs[feature], delta_val))
+        R_restante -= delta_val
+
+    if not Xpl:
+        return (f"PI-Explicação - {classe_nomes[classe_predita]}: Predição baseada no caso geral", [])
+
+    explic_str = ", ".join(f"{f} = {v:.3f}" for f, v, _ in Xpl)
+    features_usadas = [f for f, _, _ in Xpl]
+
+    return (f"PI-Explicação - {classe_nomes[classe_predita]}: {explic_str}", features_usadas)
 
     #print(f"\n>> [DEBUG] Classe: {classe_nomes[classe_predita]} | R inicial: {R_restante:.4f}")
 
@@ -70,7 +89,7 @@ def one_explanation(Vs, delta, R, classe_nomes, classe_predita):
     return (f"PI-Explicação - {classe_nomes[classe_predita]}: {explic_str}", features_usadas)
 
 
-def analisar_instancias(X_test, y_test, classe_0_nome, classe_1_nome, modelo, X):
+def analisar_instancias(X_test, y_test, classe_0_nome, classe_1_nome, modelo, X, top_n=None):
     """
     Versão robusta que funciona com DataFrames ou arrays NumPy
     """
@@ -93,6 +112,12 @@ def analisar_instancias(X_test, y_test, classe_0_nome, classe_1_nome, modelo, X)
         R = gamma_A - gamma_omega
         delta = calcular_deltas(modelo, X, Vs, classe_predita)
         
+                # Aplicar top-N se especificado
+        if top_n is not None:
+            delta = delta[:top_n]
+        
+        explicacao, features = one_explanation(Vs, delta, R, classe_nomes, classe_predita)
+
         #print(f"\nInstância {idx} - Classe predita: {classe_nomes[classe_predita]}")
         #print(f"R = {R:.4f}")
         #print("Deltas:")

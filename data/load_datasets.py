@@ -1,22 +1,36 @@
-import pandas as pd
+import os
 import numpy as np
+import pandas as pd
+import urllib.request
 from sklearn.datasets import load_iris, fetch_openml, load_breast_cancer
 from sklearn.model_selection import train_test_split
 from sklearn.utils import resample
-import urllib.request
-import os
+from pathlib import Path
 from io import StringIO
 
 # Timeout para requisições web (segundos)
 REQUEST_TIMEOUT = 20
+CACHE_DIR = Path("data_cache")
+CACHE_DIR.mkdir(exist_ok=True)
 
-def carregar_dataset(nome_dataset, reduzir_mnist=True, tamanho_mnist=1000):
+def carregar_dataset(nome_dataset, reduzir_mnist=True, tamanho_mnist=1000, forcar_download=False):
     """
     Carrega os datasets com tratamento robusto.
     Parâmetros:
         - reduzir_mnist: Se True, reduz MNIST para tamanho_mnist amostras
         - tamanho_mnist: Número de amostras para manter no MNIST
     """
+
+        # cache local
+    cache_file = CACHE_DIR / f"{nome_dataset}.pkl"
+    
+    # Se existe no cache e não quer forçar download
+    if cache_file.exists() and not forcar_download:
+        try:
+            return pd.read_pickle(cache_file)
+        except Exception as e:
+            print(f"Erro ao ler cache, baixando novamente: {e}")
+
     try:
         if nome_dataset == 'iris':
             data = load_iris()

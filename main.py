@@ -1,4 +1,4 @@
-from data.load_datasets import selecionar_dataset_e_classe  
+from data.load_datasets import selecionar_dataset_e_classe, carregar_dataset
 from models.train_model import treinar_modelo
 from explanations.pi_explanation import analisar_instancias, contar_features_relevantes, calcular_estatisticas_explicacoes
 import time
@@ -15,6 +15,8 @@ def limpar_terminal():
 def main():
     # Selecionar dataset e classes
     nome_dataset, classe_0_nome, X, y, class_names = selecionar_dataset_e_classe()
+        # Carrega dataset (usará cache se disponível)
+    X, y, class_names = carregar_dataset('heart_disease')
     
     if nome_dataset is None:
         print("Você escolheu sair.")
@@ -35,7 +37,7 @@ def main():
     feature_names = getattr(X, 'columns', [f"feature_{i}" for i in range(X.shape[1])])
     X_df = pd.DataFrame(X, columns=feature_names)
     
-    # Treinar modelo
+    # Treinar modelo # SETANDO O NUMERO DE FEATURES PARA A EXPLICAÇÃO
     modelo, X_test, y_test = treinar_modelo(X_df, y)
     
 
