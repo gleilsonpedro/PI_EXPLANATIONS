@@ -3,19 +3,20 @@ import pandas as pd
 
 def calcular_gamma_omega(modelo, X, classe_predita):
     """
-    Calcula γ_ω — o valor mínimo possível de γ (score linear) para mudar a predição.
+    Calcula γ_ω — o valor mínimo possível de γ (score linear) para mudar a predição. representa o pior caso
     """
-    coef = modelo.coef_[0]
-    intercept = modelo.intercept_[0]
+    coef = modelo.coef_[0]           # peso das features gerado pela RLogistica
+    intercept = modelo.intercept_[0] # bias do modelo
     
     gamma_omega = intercept
+    # itera sobre o datset calculando a contribuição "pior possivel" da feature p/ escore
     for i, col in enumerate(X.columns):
         w_i = coef[i]
         min_val = X[col].min()
         max_val = X[col].max()
 
         # Sempre tentar reduzir a influência da feature (pior caso)
-        contrib = w_i * (min_val if w_i > 0 else max_val)
+        contrib = w_i * (min_val if w_i > 0 else max_val) 
         gamma_omega += contrib
 
     return gamma_omega
@@ -35,12 +36,12 @@ def calcular_deltas(modelo, X, instancia, classe_predita):
         pior_caso = w_i * (min_val if w_i > 0 else max_val)
         delta = valor_atual - pior_caso
         deltas.append((feature, delta))
-
+    # Ordena as features pela magnitude da contribuição (mais importantes primeiro)
     deltas.sort(key=lambda x: -abs(x[1]))
     return deltas
 
 
-def one_explanation(Vs, delta, R, classe_nomes, classe_predita, top_n=None):
+def one_explanation(Vs, delta, R, classe_nomes, classe_predita):
     """
     Gera explicação PI mínima conforme artigo NeurIPS20
     Retorna: (explicacao_str, features_usadas)
@@ -48,10 +49,6 @@ def one_explanation(Vs, delta, R, classe_nomes, classe_predita, top_n=None):
     Xpl = []
     R_restante = float(R)  # Garante escalar
 
-    # Aplicar top-N se especificado
-    if top_n is not None:
-        delta = delta[:top_n]
-    
     for feature, delta_val in delta:
         if R_restante <= 0:
             break
@@ -67,29 +64,8 @@ def one_explanation(Vs, delta, R, classe_nomes, classe_predita, top_n=None):
 
     return (f"PI-Explicação - {classe_nomes[classe_predita]}: {explic_str}", features_usadas)
 
-    #print(f"\n>> [DEBUG] Classe: {classe_nomes[classe_predita]} | R inicial: {R_restante:.4f}")
 
-    for feature, delta_val in delta:
-        # Verifica se já pode parar
-        # correto:
-        if R_restante <= 0:
-            break
-        
-
-        Xpl.append((feature, Vs[feature], delta_val))
-        R_restante -= delta_val
-        #print(f"  [DEBUG] Adicionou: {feature}, delta={delta_val:.4f}, R_restante={R_restante:.4f}")
-
-    if not Xpl:
-        return (f"PI-Explicação - {classe_nomes[classe_predita]}: Predição baseada no caso geral", [])
-
-    explic_str = ", ".join(f"{f} = {v:.3f}" for f, v, _ in Xpl)
-    features_usadas = [f for f, _, _ in Xpl]
-
-    return (f"PI-Explicação - {classe_nomes[classe_predita]}: {explic_str}", features_usadas)
-
-
-def analisar_instancias(X_test, y_test, classe_0_nome, classe_1_nome, modelo, X, top_n=None):
+def analisar_instancias(X_test, y_test, classe_0_nome, classe_1_nome, modelo, X):
     """
     Versão robusta que funciona com DataFrames ou arrays NumPy
     """
@@ -112,10 +88,6 @@ def analisar_instancias(X_test, y_test, classe_0_nome, classe_1_nome, modelo, X,
         R = gamma_A - gamma_omega
         delta = calcular_deltas(modelo, X, Vs, classe_predita)
         
-                # Aplicar top-N se especificado
-        if top_n is not None:
-            delta = delta[:top_n]
-        
         explicacao, features = one_explanation(Vs, delta, R, classe_nomes, classe_predita)
 
         #print(f"\nInstância {idx} - Classe predita: {classe_nomes[classe_predita]}")
@@ -124,8 +96,6 @@ def analisar_instancias(X_test, y_test, classe_0_nome, classe_1_nome, modelo, X,
         #for f, d in delta:
             #print(f"  {f}: {d:.4f}")
 
-        
-        
         explicacao, features = one_explanation(Vs, delta, R, classe_nomes, classe_predita)
         explicacoes.append(explicacao)
         
@@ -146,11 +116,9 @@ def analisar_instancias(X_test, y_test, classe_0_nome, classe_1_nome, modelo, X,
 
 def calcular_estatisticas_explicacoes(explicacoes):
     """
-    Calcula estatísticas sobre o tamanho das explicações
-    
+    Calcula estatísticas sobre o tamanho das explicações    
     Args:
-        explicacoes: Lista de todas as explicações geradas
-    
+        explicacoes: Lista de todas as explicações geradas    
     Returns:
         Dicionário com média e desvio padrão do número de features por explicação
     """

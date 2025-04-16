@@ -13,23 +13,11 @@ REQUEST_TIMEOUT = 20
 CACHE_DIR = Path("data_cache")
 CACHE_DIR.mkdir(exist_ok=True)
 
-def carregar_dataset(nome_dataset, reduzir_mnist=True, tamanho_mnist=1000, forcar_download=False):
+def carregar_dataset(nome_dataset, forcar_download=False):
     """
     Carrega os datasets com tratamento robusto.
-    Parâmetros:
-        - reduzir_mnist: Se True, reduz MNIST para tamanho_mnist amostras
-        - tamanho_mnist: Número de amostras para manter no MNIST
     """
-
-        # cache local
-    cache_file = CACHE_DIR / f"{nome_dataset}.pkl"
-    
-    # Se existe no cache e não quer forçar download
-    if cache_file.exists() and not forcar_download:
-        try:
-            return pd.read_pickle(cache_file)
-        except Exception as e:
-            print(f"Erro ao ler cache, baixando novamente: {e}")
+    from sklearn.datasets import load_wine
 
     try:
         if nome_dataset == 'iris':
@@ -37,37 +25,22 @@ def carregar_dataset(nome_dataset, reduzir_mnist=True, tamanho_mnist=1000, forca
             X = pd.DataFrame(data.data, columns=data.feature_names)
             y = data.target
             class_names = list(data.target_names)
-            
+
         elif nome_dataset == 'pima_indians_diabetes':
             url = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.csv"
             col_names = ['num_gravidezes', 'glicose', 'pressao_sangue', 'espessura_pele',
-                        'insulina', 'imc', 'diabetes_pedigree', 'idade', 'target']
+                         'insulina', 'imc', 'diabetes_pedigree', 'idade', 'target']
             data = pd.read_csv(url, header=None, names=col_names)
             X = data.iloc[:, :-1]
             y = data.iloc[:, -1]
             class_names = ['Não Diabético', 'Diabético']
-            
+
         elif nome_dataset == 'breast_cancer':
             data = load_breast_cancer()
             X = pd.DataFrame(data.data, columns=data.feature_names)
             y = data.target
             class_names = list(data.target_names)
-            
-        elif nome_dataset == 'mnist':
-            data = fetch_openml('mnist_784', version=1, as_frame=False)
-            X, y = data.data, data.target.astype(int)
-            mask = (y == 0) | (y == 1)
-            X, y = X[mask], y[mask]
-            if reduzir_mnist and len(X) > tamanho_mnist:
-                X, _, y, _ = train_test_split(
-                    X, y,
-                    train_size=tamanho_mnist,
-                    stratify=y,
-                    random_state=42
-                )
-            X = pd.DataFrame(X)
-            class_names = ['Dígito 0', 'Dígito 1']
-        
+
         elif nome_dataset == 'banknote':
             url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00267/data_banknote_authentication.txt"
             col_names = ["variance", "skewness", "curtosis", "entropy", "target"]
@@ -88,7 +61,6 @@ def carregar_dataset(nome_dataset, reduzir_mnist=True, tamanho_mnist=1000, forca
             y = data["target"]
             class_names = ["No Disease", "Disease"]
 
-
         elif nome_dataset == 'wine_quality':
             url = "https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv"
             data = pd.read_csv(url, sep=";")
@@ -97,7 +69,6 @@ def carregar_dataset(nome_dataset, reduzir_mnist=True, tamanho_mnist=1000, forca
             y = data["target"]
             class_names = ["Low Quality", "High Quality"]
 
-            
         elif nome_dataset == 'creditcard':
             data = fetch_openml('creditcard', version=1, as_frame=True)
             X, y = data.data, data.target.astype(int)
@@ -108,38 +79,62 @@ def carregar_dataset(nome_dataset, reduzir_mnist=True, tamanho_mnist=1000, forca
                 random_state=42
             )
             class_names = ['Normal', 'Fraude']
-            
+
+        elif nome_dataset == 'wine':
+            data = load_wine()
+            X = pd.DataFrame(data.data, columns=data.feature_names)
+            y = data.target
+            class_names = list(data.target_names)
+
+        elif nome_dataset == 'haberman':
+            url = "https://archive.ics.uci.edu/ml/machine-learning-databases/haberman/haberman.data"
+            col_names = ["age", "year_of_op", "positive_nodes", "target"]
+            data = pd.read_csv(url, header=None, names=col_names)
+            data["target"] = data["target"] - 1  # transforma classes de 1/2 para 0/1
+            X = data.drop("target", axis=1)
+            y = data["target"]
+            class_names = ["Sobreviveu 5+ anos", "Morreu antes de 5 anos"]
+
+
+        elif nome_dataset == 'seeds':
+            url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00236/seeds_dataset.txt"
+            col_names = ["area", "perimeter", "compactness", "length", "width", "asymmetry", "groove", "target"]
+            data = pd.read_csv(url, sep=r"\s+", names=col_names)
+            y = data["target"] - 1  # classes são 1, 2, 3 → vira 0, 1, 2
+            X = data.drop("target", axis=1)
+            class_names = ["Kama", "Rosa", "Canadian"]
+
         else:
             raise ValueError("Dataset não suportado.")
-            
+
         return X, y, class_names
-        
+
     except Exception as e:
         print(f"\nErro ao carregar {nome_dataset}: {str(e)}")
         return None, None, None
 
+
 def selecionar_dataset_e_classe():
     """
-    Menu interativo com datasets testados e funcionais
+    Menu interativo com 10 datasets numéricos testados e funcionais
     """
     menu = '''
-    | **************** MENU DE DATASETS CONFIÁVEIS **************** |
-    | [0] Iris (150×4×3)             | [1] Pima Diabetes (768×8×2)  |
-    | [2] Breast Cancer (569×30×2)   | [3] MNIST - Dígitos 0/1      |
-    | [4] Creditcard Fraud (284×30×2)| [5] Banknote Authentication  |
-    | [6] Heart Disease              | [7] Wine Quality (Red)       |
-    | [Q] SAIR                                                   |
-
-    |---------------------------------------------------------------|
+    | ******************* MENU DE DATASETS CONFIÁVEIS ******************** |
+    | [0] Iris (150×4×3)                 | [1] Pima Diabetes (768×8×2)     |
+    | [2] Breast Cancer (569×30×2)       | [3] Creditcard Fraud (1421×30×2)|
+    | [4] Banknote Auth (1372×4×2)       | [5] Heart Disease (303×13×2)    |
+    | [6] Wine Quality (1599×11×2)       | [7] Wine (178×13×3)             |
+    | [8] Haberman Survival (306×3×2)    | [9] Seeds (210×7×3)             |
+    | [Q] SAIR                                                             |
+    |----------------------------------------------------------------------|
     '''
     print(menu)
 
     nomes_datasets = [
         'iris', 'pima_indians_diabetes', 'breast_cancer',
-        'mnist', 'creditcard',
-        'banknote', 'heart_disease', 'wine_quality'
+        'creditcard', 'banknote', 'heart_disease',
+        'wine_quality', 'wine', 'haberman', 'seeds'
     ]
-
 
     while True:
         opcao = input("\nDigite o número do dataset ou 'Q' para sair: ").upper().strip()

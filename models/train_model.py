@@ -4,13 +4,16 @@ from sklearn.model_selection import train_test_split
 
 def treinar_modelo(X, y, regularizacao=1.0, penalty='l1', max_iter=200, solver="liblinear"):
     """
-    Treina modelo de regressão logística com opção de limitar explicações a top-N features
-    
+    Treina um modelo de Regressão Logística usando os dados fornecidos.
+
     Parâmetros:
-        X: DataFrame ou array com features
-        y: array com labels
-        regularizacao: valor de regularização (inverso de C)
-        top_n: número máximo de features a incluir nas explicações (None para sem limite)
+        X: DataFrame ou array contendo as features (atributos de entrada)
+        y: array ou Series com os rótulos (0 ou 1)
+        regularizacao: valor de C na Regressão Logística (inverso da força de regularização)
+        penalty: tipo de penalização a aplicar ('l1' ou 'l2')
+        max_iter: número máximo de iterações para convergência do otimizador
+        solver: algoritmo de otimização usado (ex: 'liblinear' é ideal para problemas binários)
+
     """
     if not isinstance(X, pd.DataFrame):
         X = pd.DataFrame(X)

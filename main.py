@@ -15,8 +15,7 @@ def limpar_terminal():
 def main():
     # Selecionar dataset e classes
     nome_dataset, classe_0_nome, X, y, class_names = selecionar_dataset_e_classe()
-        # Carrega dataset (usará cache se disponível)
-    X, y, class_names = carregar_dataset('heart_disease')
+       
     
     if nome_dataset is None:
         print("Você escolheu sair.")
@@ -80,7 +79,6 @@ def main():
     import joblib
 
     # Empacotar as features realmente usadas por instância
-    # (Você já tem a lista `explicacoes` → vamos extrair as features dela)
     features_usadas_lista = []
     for exp in explicacoes:
         if "Nenhuma" in exp:
