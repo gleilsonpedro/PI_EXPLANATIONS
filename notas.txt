@@ -34,3 +34,4 @@ Comparação da pi exp´licação com outras técnicas (SHAP e LIME)
     ***** pegar média das explicações
 
     opção de rejeição - adaptando o algoritimo com a minima.
+    não é one-vs-rest é binário
