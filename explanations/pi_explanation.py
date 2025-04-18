@@ -1,154 +1,143 @@
 import numpy as np
 import pandas as pd
+from collections import Counter
 
-def one_explanation(Vs, delta, R, feature_names, modelo, instancia_test, X):
-    """
-    Calcula uma PI-explicação para uma instância específica.
-    * HIPERPARAMETROS:
-        aumentando ou dmnuindo o percentil e multiplicando o valor do delta por uma constante 
-            se > 1 a sensibilidade aumenta ( mais features serão incluidas)
-            se 1 > a sensibilidade diminui ( menos features serão incluidas)
-    """
-   # limiar_delta = np.percentile(np.abs(delta), 10)  # Pega o percentil 25 dos deltas
-    Xpl = []
-    delta_sorted = sorted(enumerate(delta), key=lambda x: abs(x[1]), reverse=True)
-    R_atual = R
-    Idx = 0
+import numpy as np
+import pandas as pd
+from collections import Counter
+
+import numpy as np
+import pandas as pd
+from collections import Counter
+
+def calculate_deltas(model, instance, X_train):
+    """Calcula os deltas conforme artigo NEURIPS20"""
+    coef = model.coef_[0]
+    pred_class = model.predict(instance)[0]
+    instance_val = instance.iloc[0]
     
-    while R_atual >= 0 and Idx < len(delta_sorted):
-        sorted_idx, delta_value = delta_sorted[Idx]
-        feature = feature_names[sorted_idx]
-        feature_value = Vs[feature]
-##### verificar se esta ok
-       # if abs(delta_value) < limiar_delta:  # Descarta deltas muito pequenos
-       #    break
-
-        Xpl.append(f"{feature} - {feature_value}")
-       # R_atual -= delta_value * 0.5 # Diminuir a sensibilidade
-        R_atual -= delta_value #* 1.5 # Aumentar a sensibilidade
-        Idx += 1
-    
-    return Xpl
-
-def encontrar_intervalo_perturbacao(modelo, instancia, feature, valor_original, classe_desejada, X, passo=0.1, max_iter=50):
-    """
-    Encontra o intervalo de valores para uma feature que mantém a classe desejada.
-    """
-    min_val_data = X[feature].min()
-    max_val_data = X[feature].max()
-    min_val, max_val = valor_original, valor_original
-    
-    # Perturba negativamente
-    for _ in range(max_iter):
-        min_val -= passo
-        if min_val < min_val_data:
-            min_val = min_val_data
-            break
-        instancia_perturbada = instancia.copy()
-        instancia_perturbada[feature] = min_val
-        predicao = modelo.predict(instancia_perturbada)
-        if predicao[0] != classe_desejada:
-            min_val += passo
-            break
-
-    # Perturba positivamente
-    for _ in range(max_iter):
-        max_val += passo
-        if max_val > max_val_data:
-            max_val = max_val_data
-            break
-        instancia_perturbada = instancia.copy()
-        instancia_perturbada[feature] = max_val
-        predicao = modelo.predict(instancia_perturbada)
-        if predicao[0] != classe_desejada:
-            max_val -= passo
-            break
-
-    return min_val, max_val
-
-def analisar_instancias(X_test, y_test, class_names, modelo, X, instancia_para_analisar=None):
-    """
-    Analisa as instâncias do conjunto de teste e calcula as PI-explicações.
-    Retorna a lista de todas as PI-explicações (TUDO).
-    """
-    if not isinstance(X_test, pd.DataFrame):
-        X_test = pd.DataFrame(X_test, columns=[f"feature_{i}" for i in range(X_test.shape[1])])
-
-    # Obtém os nomes das features
-    feature_names = X_test.columns.tolist()  
-    
-    # Seleciona as instâncias para análise
-    num_instancias = len(X_test)
-    instancias_para_analisar = range(num_instancias) if instancia_para_analisar is None else [instancia_para_analisar]
-    
-    TUDO = []
-    # Loop para analisar cada instância selecionada
-    for idx in instancias_para_analisar:
-        Vs = X_test.iloc[idx].to_dict()
-        instancia_test = X_test.iloc[[idx]]
-
-        # Calcula `gamma_A` usando `decision_function`
-        gamma_A = modelo.decision_function(instancia_test)[0]
+    deltas = []
+    for i, feature in enumerate(X_train.columns):
+        val = instance_val[feature]
+        if pred_class == 1:  # Classe positiva
+            worst = X_train[feature].min() if coef[i] > 0 else X_train[feature].max()
+        else:  # Classe negativa
+            worst = X_train[feature].max() if coef[i] > 0 else X_train[feature].min()
         
-        # Cálculo do valor delta para cada feature
+        deltas.append((val - worst) * coef[i])
+    
+    return np.array(deltas)
 
-        # verificar a classe antes de calcular os deltinhas classe 1 é esta classe 0 é invertido
-        delta = []
-        w = modelo.coef_[0]
-        for i, feature in enumerate(feature_names):
-            if w[i] < 0:
-                delta.append((Vs[feature] - X[feature].max()) * w[i])
+def one_explanation(model, instance, X_train):
+    """Implementação exata do algoritmo do artigo"""
+    pred_class = model.predict(instance)[0]
+    score = model.decision_function(instance)[0]
+    deltas = calculate_deltas(model, instance, X_train)
+    
+    # Ordena features por importância
+    order = np.argsort(-np.abs(deltas))
+    sorted_deltas = deltas[order]
+    features = X_train.columns[order]
+    
+    explanation = []
+    cum_sum = 0
+    phi = (sum(deltas) - score) if pred_class == 1 else (score - sum(deltas))
+    
+    for i, delta in enumerate(sorted_deltas):
+        if (pred_class == 1 and cum_sum <= phi) or (pred_class == 0 and cum_sum < phi):
+            explanation.append(f"{features[i]} = {instance.iloc[0][features[i]]}")
+            cum_sum += abs(delta)
+        else:
+            break
+    
+    return explanation
+
+def gerar_relatorio(model, X_test, y_test, X_train, class_names):
+    """Gera relatório completo"""
+    # Convertendo y_test para Series se for numpy array
+    y_test_series = pd.Series(y_test) if isinstance(y_test, np.ndarray) else y_test
+    
+    explanations = [one_explanation(model, X_test.iloc[[i]], X_train) 
+                   for i in range(len(X_test))]
+    
+    # Verifica validade das explicações
+    validacoes = [verificar_explicacao(model, X_test.iloc[[i]], exp, X_train) 
+                 for i, exp in enumerate(explanations)]
+
+    # Cálculo de estatísticas completo
+    stats = calcular_estatisticas(explanations)
+    
+    # Construção do relatório completo
+    report = f"""
+==================================================
+{'ANÁLISE COMPLETA'.center(50)}
+==================================================
+
+Dataset: {X_train.shape[1]} features, {len(X_train)} amostras de treino
+Classes: {class_names[0]} (0) vs {class_names[1]} (1)
+
+Métricas do Modelo:
+- Acurácia: {model.score(X_test, y_test):.2%}
+- Explicações válidas: {sum(validacoes)}/{len(validacoes)}
+
+Estatísticas das Explicações:
+- Média de features por explicação: {stats['media_features']:.2f} ± {stats['desvio_features']:.2f}
+- Número mínimo de features: {min([len(e) for e in explanations])}
+- Número máximo de features: {max([len(e) for e in explanations])}
+
+Features mais relevantes (frequência):
+"""
+    for feat, count in stats['feature_frequentes']:
+        report += f"  - {feat}: {count} ocorrências\n"
+    
+    # Distribuição por classe
+    report += "\nDistribuição por classe:\n"
+    for cls in [0, 1]:
+        cls_exps = [e for i, e in enumerate(explanations) if y_test_series.iloc[i] == cls]
+        report += f"- {class_names[cls]}: {len(cls_exps)} explicações "
+        report += f"(média {np.mean([len(e) for e in cls_exps]):.1f} features)\n"
+    
+    # Todas as explicações
+    report += "\nExplicações Detalhadas:\n"
+    for i, exp in enumerate(explanations):
+        report += f"\nInstância {i} ({class_names[y_test_series.iloc[i]]}):\n"
+        report += f"Features usadas: {len(exp)}\n"
+        report += "\n".join(f"  - {f}" for f in exp)
+        report += f"\nValidação: {'✓' if validacoes[i] else '✗'}"
+    
+    return report
+
+def verificar_explicacao(model, instance, explanation, X_train):
+    """Verifica se a explicação realmente garante a predição"""
+    original_pred = model.predict(instance)[0]
+    
+    # Cria uma instância perturbada com valores de pior caso
+    perturbed = instance.copy()
+    for feature in X_train.columns:
+        if feature not in [x.split(' = ')[0] for x in explanation]:
+            coef_idx = X_train.columns.get_loc(feature)
+            if model.coef_[0][coef_idx] > 0:
+                perturbed[feature] = X_train[feature].min()
             else:
-                delta.append((Vs[feature] - X[feature].min()) * w[i])
+                perturbed[feature] = X_train[feature].max()
+    
+    return original_pred == model.predict(perturbed)[0]
 
-        # Calcula R
-        R = sum(delta) - gamma_A
-        
-        # Computa a PI-explicação para a instância atual usando nomes das features
-        Xpl = one_explanation(Vs, delta, R, feature_names, modelo, instancia_test, X)
-        
-        # Imprime os resultados todos
-        classe_verdadeira = y_test[idx]
-        print(f"\nInstância {idx}:")
-        print(f"Classe verdadeira (binária): {classe_verdadeira}")
-        print(f"PI-Explicação: ")
-
-              
-        TUDO.append(Xpl)
-
-        for item in Xpl:
-            print(f"- {item}")
-        
-        if not Xpl:
-            print('_No-PI-explanation_' * 3)
-
-    # Retorna a lista de todas as PI-explicações
-    return TUDO
-
-def contar_features_relevantes(TUDO):
-    """
-    Conta quantas vezes cada feature aparece nas PI-explicações.
-    """
-    contagem_features = {}
-
-    # Itera sobre cada item da lista TUDO
-    for item in TUDO:
-        # Verifica se o item é uma lista
-        if isinstance(item, list):
-            # Itera sobre cada item da lista
-            for feature in item:
-                # Extrai o nome da feature
-                nome_feature = feature.split(" - ")[0]
-
-                # Verifica se a feature já está no dicionário
-                if nome_feature in contagem_features:
-                    # Incrementa a contagem
-                    contagem_features[nome_feature] += 1
-                else:
-                    # Adiciona a feature ao dicionário com contagem 1
-                    contagem_features[nome_feature] = 1
-
-    # Imprime a contagem de features
-    print("\nContagem de features relevantes:")
-    for nome_feature, contagem in contagem_features.items():
-        print(f"Feature: {nome_feature} | Contagem: {contagem}")
+def calcular_estatisticas(explanations):
+    """Calcula estatísticas sobre as explicações"""
+    num_features = [len(exp) for exp in explanations]
+    avg_features = np.mean(num_features)
+    std_features = np.std(num_features)
+    
+    # Conta frequência de features
+    feature_counts = Counter()
+    for exp in explanations:
+        for item in exp:
+            feature = item.split(' = ')[0]
+            feature_counts[feature] += 1
+    
+    return {
+        'media_features': avg_features,
+        'desvio_features': std_features,
+        'feature_frequentes': feature_counts.most_common(5)
+    }
